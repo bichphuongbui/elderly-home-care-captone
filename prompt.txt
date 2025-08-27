@@ -1,15 +1,32 @@
-Tạo component `LoginPage` bằng React + TypeScript.
+1. Tạo file `blog.service.ts` trong `src/service/`
 
-Yêu cầu:
-- Form gồm:
-  + Email
-  + Mật khẩu
-- Validate: không được trống
-- Khi submit:
-  + Gọi `loginUser(email, password)` từ `users.service.ts`
-  + Nếu trả về user:
-    - Lưu vào `localStorage.setItem('current_user', JSON.stringify(user))`
-    - Điều hướng đến `/dashboard`
-  + Nếu không đúng: hiển thị lỗi "Email hoặc mật khẩu không đúng"
-- Giao diện bằng TailwindCSS, rõ ràng, dễ đọc
-- Thêm nút "Quay lại trang chủ" → điều hướng `/`
+Export 2 hàm:
+- `getAllBlogs(): Promise<Blog[]>` → gọi GET https://68aed258b91dfcdd62ba657c.mockapi.io/blogs
+- `getBlogById(id: string): Promise<Blog>` → gọi GET https://68aed258b91dfcdd62ba657c.mockapi.io/blogs/:id
+
+Định nghĩa type `Blog` gồm: id, title, content, createdAt, thumbnail
+
+2. Tạo trang `BlogListPage.tsx`:
+
+- Gọi `getAllBlogs()` từ service
+- Hiển thị danh sách blog theo card layout:
+  + Ảnh thumbnail, tiêu đề, ngày đăng
+  + Nút "Xem chi tiết" → điều hướng đến `/blog/:id`
+- Dùng TailwindCSS, layout responsive, đẹp
+
+3. Tạo trang `BlogDetailPage.tsx`:
+
+- Gọi `getBlogById(id)` từ service (lấy id từ URL param)
+- Hiển thị:
+  + Ảnh thumbnail lớn
+  + Tiêu đề
+  + Thông tin ngày đăng
+  + Nội dung chi tiết (content)
+- TailwindCSS đẹp, dễ đọc
+
+4. Cập nhật `routes/index.tsx`:
+
+- Thêm:
+```tsx
+<Route path="/blog" element={<BlogListPage />} />
+<Route path="/blog/:id" element={<BlogDetailPage />} />
