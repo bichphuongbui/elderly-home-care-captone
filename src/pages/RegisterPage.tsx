@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
+import { registerUser, RegisterUserPayload, checkEmailExists } from '../services/users.service';
 
 // Interface cho form data
 interface RegisterFormData {
@@ -21,15 +22,7 @@ interface FormErrors {
   role?: string;
 }
 
-// Interface cho user trong localStorage
-interface MockUser {
-  id: string;
-  fullName: string;
-  email: string;
-  password: string;
-  role: string;
-  createdAt: string;
-}
+
 
 // Trang đăng ký với form validation và giao diện thân thiện người lớn tuổi
 const RegisterPage: React.FC = () => {
@@ -45,26 +38,21 @@ const RegisterPage: React.FC = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mockUsers, setMockUsers] = useState<MockUser[]>([]);
+
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  // Load mock users từ localStorage khi component mount
+  // Clear old localStorage data khi component mount
   useEffect(() => {
-    const storedUsers = localStorage.getItem('mock_users');
-    if (storedUsers) {
-      try {
-        setMockUsers(JSON.parse(storedUsers));
-      } catch (error) {
-        console.error('Error parsing stored users:', error);
-        setMockUsers([]);
-      }
-    }
+    // Xóa dữ liệu cũ từ localStorage nếu có
+    localStorage.removeItem('mock_users');
+    localStorage.removeItem('registered_users');
   }, []);
+
+
 
   // Danh sách vai trò
   const roleOptions = [
     { value: '', label: 'Chọn vai trò của bạn' },
-    { value: 'Guest', label: 'Khách (Guest)' },
     { value: 'Care Seeker', label: 'Người cần chăm sóc (Care Seeker)' },
     { value: 'Caregiver', label: 'Người chăm sóc (Caregiver)' }
   ];
@@ -86,8 +74,8 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  // Validate form
-  const validateForm = (): boolean => {
+  // Validate form cơ bản (không bao gồm check email trùng lặp)
+  const validateFormBasic = (): FormErrors => {
     const newErrors: FormErrors = {};
 
     // Kiểm tra họ và tên
@@ -100,12 +88,6 @@ const RegisterPage: React.FC = () => {
       newErrors.email = 'Vui lòng nhập email';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email không hợp lệ';
-    } else {
-      // Kiểm tra email đã tồn tại
-      const emailExists = mockUsers.some(user => user.email.toLowerCase() === formData.email.toLowerCase());
-      if (emailExists) {
-        newErrors.email = 'Email đã được sử dụng';
-      }
     }
 
     // Kiểm tra mật khẩu
@@ -127,42 +109,47 @@ const RegisterPage: React.FC = () => {
       newErrors.role = 'Vui lòng chọn vai trò';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   // Xử lý submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    // Validate form cơ bản trước
+    const basicErrors = validateFormBasic();
+    if (Object.keys(basicErrors).length > 0) {
+      setErrors(basicErrors);
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Tạo user mới
-      const newUser: MockUser = {
-        id: Date.now().toString(),
+      // Kiểm tra email đã tồn tại từ API
+      const emailExists = await checkEmailExists(formData.email.toLowerCase().trim());
+      if (emailExists) {
+        setErrors({ email: 'Email đã được sử dụng' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Tạo payload để gửi đến API
+      const payload: RegisterUserPayload = {
         fullName: formData.fullName.trim(),
         email: formData.email.toLowerCase().trim(),
-        password: formData.password, // Trong thực tế sẽ hash password
-        role: formData.role,
-        createdAt: new Date().toISOString()
+        password: formData.password,
+        role: formData.role
       };
 
-      // Cập nhật danh sách users
-      const updatedUsers = [...mockUsers, newUser];
+      // Gọi API để đăng ký user
+      const newUser = await registerUser(payload);
       
-      // Lưu vào localStorage
-      localStorage.setItem('mock_users', JSON.stringify(updatedUsers));
-      
-      // Cập nhật state
-      setMockUsers(updatedUsers);
+      // Lưu thông tin user hiện tại vào localStorage
+      localStorage.setItem('current_user', JSON.stringify(newUser));
       
       // Hiển thị thông báo thành công
-      setSuccessMessage('Đăng ký thành công!');
+      setSuccessMessage('Đăng ký thành công');
       
       // Reset form
       setFormData({
@@ -174,14 +161,15 @@ const RegisterPage: React.FC = () => {
       });
       setErrors({});
       
-      // Ẩn thông báo sau 3 giây
+      // Điều hướng đến dashboard sau 2 giây
       setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
+        navigate('/dashboard');
+      }, 2000);
 
     } catch (error) {
       console.error('Lỗi đăng ký:', error);
-      alert('Có lỗi xảy ra. Vui lòng thử lại.');
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra. Vui lòng thử lại.';
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
