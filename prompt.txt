@@ -1,25 +1,15 @@
-Tạo luồng đăng ký người dùng hoàn chỉnh trong `RegisterPage.tsx` bằng React + TypeScript, chưa cần backend, chỉ dùng mock logic.
+Tạo component `LoginPage` bằng React + TypeScript.
 
 Yêu cầu:
-- Form các trường:
-  + Họ và tên (fullName)
-  + Email (email)
-  + Mật khẩu (password)
-  + Xác nhận mật khẩu (confirmPassword)
-  + Vai trò (role) - dropdown: Guest | Care Seeker | Caregiver
-- Validate:
-  + Không trường nào được để trống
-  + Mật khẩu phải >= 6 ký tự
-  + Mật khẩu và xác nhận mật khẩu phải giống nhau
-  + Email phải đúng định dạng (regex cơ bản)
-- Khi người dùng nhấn đăng ký:
-  + Nếu form hợp lệ, lưu thông tin vào localStorage dạng mảng JSON có key là `"mock_users"`
-  + Hiển thị toast/thông báo "Đăng ký thành công!"
-  + Reset form
-- Nếu email đã tồn tại trong localStorage thì báo lỗi "Email đã được sử dụng"
-- Dùng state để quản lý form và lỗi
-- Dùng TailwindCSS để làm giao diện đẹp, dễ đọc
-- Dùng `useEffect` để load danh sách mock_users từ localStorage nếu có
-- Có nút "Quay lại trang chủ" điều hướng về `/`
-
-Xuất component trong `pages/RegisterPage.tsx`, có thể chạy độc lập.
+- Form gồm:
+  + Email
+  + Mật khẩu
+- Validate: không được trống
+- Khi submit:
+  + Gọi `loginUser(email, password)` từ `users.service.ts`
+  + Nếu trả về user:
+    - Lưu vào `localStorage.setItem('current_user', JSON.stringify(user))`
+    - Điều hướng đến `/dashboard`
+  + Nếu không đúng: hiển thị lỗi "Email hoặc mật khẩu không đúng"
+- Giao diện bằng TailwindCSS, rõ ràng, dễ đọc
+- Thêm nút "Quay lại trang chủ" → điều hướng `/`
