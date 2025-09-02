@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import RegisterPage from '../pages/RegisterPage';
 import LoginPage from '../pages/LoginPage';
@@ -7,6 +7,8 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import BlogListPage from '../pages/BlogListPage';
 import BlogDetailPage from '../pages/BlogDetailPage';
+import AdminDashboardPage from '../pages/AdminDashboardPage';
+import AdminLayout from '../layouts/AdminLayout';
 import { User } from '../services/users.service';
 
 // Types cho user role
@@ -103,23 +105,7 @@ const CaregiverDashboard: React.FC = () => (
   </div>
 );
 
-const AdminDashboard: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="max-w-md w-full space-y-8">
-      <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Admin Dashboard
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Chào mừng bạn đến với bảng điều khiển quản trị
-        </p>
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Tại đây bạn có thể quản lý toàn bộ hệ thống
-        </p>
-      </div>
-    </div>
-  </div>
-);
+// Admin dashboard is implemented in pages/AdminDashboardPage
 
 // Component redirect cho dashboard chung
 const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
@@ -233,14 +219,28 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+        {/* Admin routes (nested under /admin) */}
         <Route 
-          path="/admin-dashboard" 
+          path="/admin"
           element={
             <ProtectedRoute user={user} allowedRoles={['Admin']}>
-              <AdminDashboard />
+              <AdminLayout>
+                <Outlet />
+              </AdminLayout>
             </ProtectedRoute>
-          } 
-        />
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="users" element={<div className="p-4">Quản lý người dùng</div>} />
+          <Route path="approvals" element={<div className="p-4">Duyệt hồ sơ caregiver</div>} />
+          <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
+          <Route path="blog" element={<div className="p-4">Blog</div>} />
+          <Route path="faq" element={<div className="p-4">FAQ</div>} />
+        </Route>
+
+        {/* Backward compatibility: old admin-dashboard path */}
+        <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
 
         {/* 404 route */}
         <Route path="*" element={<Navigate to="/" replace />} />

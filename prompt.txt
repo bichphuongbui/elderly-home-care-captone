@@ -1,32 +1,26 @@
-1. Tạo file `blog.service.ts` trong `src/service/`
+Tạo component `AdminLayout.tsx` bằng React + TypeScript.
 
-Export 2 hàm:
-- `getAllBlogs(): Promise<Blog[]>` → gọi GET https://68aed258b91dfcdd62ba657c.mockapi.io/blogs
-- `getBlogById(id: string): Promise<Blog>` → gọi GET https://68aed258b91dfcdd62ba657c.mockapi.io/blogs/:id
+Yêu cầu:
+- Hiển thị layout dạng 2 phần:
+  1. Sidebar dọc bên trái, chiều cao full screen
+  2. Khu vực nội dung chính bên phải (`children`)
 
-Định nghĩa type `Blog` gồm: id, title, content, createdAt, thumbnail
+Sidebar:
+- Có thể đóng/mở (state toggle)
+- Khi mở: hiển thị icon + label menu
+- Khi đóng: chỉ còn icon
+- Menu gồm:
+  + Dashboard
+  + Quản lý người dùng
+  + Duyệt hồ sơ caregiver
+  + Phản hồi / Đánh giá
+  + Đăng xuất
+- Dùng icon từ `react-icons` (nếu có thể)
+- Styling bằng TailwindCSS:
+  + Sidebar: bg-gray-800, text-white, rounded, có transition
+  + Nút toggle: đặt ở trên cùng sidebar
+  + Responsive tốt
 
-2. Tạo trang `BlogListPage.tsx`:
+AdminLayout nhận `children` làm prop, hiển thị nội dung trang trong khu vực bên phải
 
-- Gọi `getAllBlogs()` từ service
-- Hiển thị danh sách blog theo card layout:
-  + Ảnh thumbnail, tiêu đề, ngày đăng
-  + Nút "Xem chi tiết" → điều hướng đến `/blog/:id`
-- Dùng TailwindCSS, layout responsive, đẹp
-
-3. Tạo trang `BlogDetailPage.tsx`:
-
-- Gọi `getBlogById(id)` từ service (lấy id từ URL param)
-- Hiển thị:
-  + Ảnh thumbnail lớn
-  + Tiêu đề
-  + Thông tin ngày đăng
-  + Nội dung chi tiết (content)
-- TailwindCSS đẹp, dễ đọc
-
-4. Cập nhật `routes/index.tsx`:
-
-- Thêm:
-```tsx
-<Route path="/blog" element={<BlogListPage />} />
-<Route path="/blog/:id" element={<BlogDetailPage />} />
+Export từ file `layouts/AdminLayout.tsx`
