@@ -1,26 +1,26 @@
-Tạo component `AdminLayout.tsx` bằng React + TypeScript.
+Chỉnh sửa hoặc tạo mới file `UserManagementPage.tsx` bằng React + TypeScript, dùng TailwindCSS để hiển thị danh sách người dùng từ API thật.
 
 Yêu cầu:
-- Hiển thị layout dạng 2 phần:
-  1. Sidebar dọc bên trái, chiều cao full screen
-  2. Khu vực nội dung chính bên phải (`children`)
+1. Gọi dữ liệu từ API:
+  - Dùng Axios để fetch dữ liệu từ:
+    https://68aed258b91dfcdd62ba657c.mockapi.io/users
+  - Gọi trong `useEffect`, lưu vào state `users`
 
-Sidebar:
-- Có thể đóng/mở (state toggle)
-- Khi mở: hiển thị icon + label menu
-- Khi đóng: chỉ còn icon
-- Menu gồm:
-  + Dashboard
-  + Quản lý người dùng
-  + Duyệt hồ sơ caregiver
-  + Phản hồi / Đánh giá
-  + Đăng xuất
-- Dùng icon từ `react-icons` (nếu có thể)
-- Styling bằng TailwindCSS:
-  + Sidebar: bg-gray-800, text-white, rounded, có transition
-  + Nút toggle: đặt ở trên cùng sidebar
-  + Responsive tốt
+2. Hiển thị dữ liệu dạng bảng:
+  - Cột: Họ tên, Email, Vai trò (role), Trạng thái (mock: active/blocked), Hành động
+  - Dòng có hover effect, bo góc nhẹ
+  - Responsive tốt, có scroll ngang nếu bảng quá rộng
 
-AdminLayout nhận `children` làm prop, hiển thị nội dung trang trong khu vực bên phải
+3. Hành động:
+  - Nút "Xem": mở modal hoặc alert hiển thị thông tin chi tiết user
+  - Nút "Khoá" / "Mở khoá": toggle trạng thái trong local state (chưa cần gọi API PUT)
 
-Export từ file `layouts/AdminLayout.tsx`
+4. Giao diện:
+  - Dùng TailwindCSS cho bố cục hiện đại, rõ ràng
+  - Nút "Xem" màu indigo, "Khoá" màu đỏ nhạt, "Mở khoá" màu xanh
+  - Có loading indicator khi đang fetch data
+  - Tiêu đề trang: "Quản lý người dùng"
+
+5. Dữ liệu `status` (active/blocked) có thể gán ngẫu nhiên (tạm thời) vì API chưa có field này
+
+6. Export từ file `pages/UserManagementPage.tsx`
