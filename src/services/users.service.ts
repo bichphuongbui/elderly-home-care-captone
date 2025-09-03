@@ -44,12 +44,19 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
 
 // Service để đăng nhập user
 export async function loginUser(email: string, password: string): Promise<User | null> {
-  const res = await axios.get<User[]>(`${API_BASE_URL}/users?email=${email}`);
-  const user = res.data[0];
-  if (user && user.password === password) {
-    return user;
+  try {
+    // Lấy tất cả users và tìm user có email khớp
+    const users = await getAllUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (user && user.password === password) {
+      return user;
+    }
+    return null;
+  } catch (error) {
+    console.error('Lỗi khi đăng nhập:', error);
+    return null;
   }
-  return null;
 }
 
 // Service để đăng ký user

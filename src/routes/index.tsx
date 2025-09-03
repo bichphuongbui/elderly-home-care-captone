@@ -8,6 +8,7 @@ import ContactPage from '../pages/ContactPage';
 import BlogListPage from '../pages/BlogListPage';
 import BlogDetailPage from '../pages/BlogDetailPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
+import UserManagementPage from '../pages/UserManagementPage';
 import AdminLayout from '../layouts/AdminLayout';
 import { User } from '../services/users.service';
 
@@ -232,7 +233,7 @@ const AppRoutes: React.FC = () => {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="users" element={<div className="p-4">Quản lý người dùng</div>} />
+          <Route path="users" element={<UserManagementPage />} />
           <Route path="approvals" element={<div className="p-4">Duyệt hồ sơ caregiver</div>} />
           <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
