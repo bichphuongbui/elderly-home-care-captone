@@ -1,33 +1,58 @@
-Tạo component `CareGiverDashboardPage.tsx` bằng React + TypeScript, dùng TailwindCSS để thiết kế giao diện dashboard dành cho người chăm sóc (Caregiver).
+Tạo trang `AdminTrainingPage.tsx` trong thư mục `pages/admin/`, dùng React + TypeScript + TailwindCSS.
 
 Yêu cầu:
-1. Tiêu đề chào mừng:
-  - "Chào mừng, [Tên người chăm sóc]!"
-  - Phụ đề: "Dưới đây là tổng quan về hoạt động chăm sóc của bạn"
+1. Dùng mock data để hiển thị danh sách khóa học (id, title, description, createdAt)
+2. Giao diện:
+  - Mỗi khóa học hiển thị trong card (grid 2 cột)
+  - Card gồm:
+    + Tên khoá học
+    + Mô tả ngắn
+    + Ngày tạo (format lại dd/mm/yyyy)
+    + Button: "Xem tài liệu", "Sửa", "Xoá"
+3. Chức năng:
+  - Nút "Xem tài liệu": điều hướng đến `/admin/training/:id/files`
+  - Nút "Sửa": mở modal/form chỉnh sửa (dùng useState)
+  - Nút "Xoá": xác nhận trước khi xóa khỏi mock state
+  - Nút "Thêm khóa học": nằm ở đầu trang → mở form thêm khóa học
+4. Không dùng API, chỉ dùng useState để mock dữ liệu
+5. Responsive tốt, UI rõ ràng
+6. Xuất từ file `pages/admin/AdminTrainingPage.tsx`
 
-2. Thống kê nhanh (hiển thị theo hàng ngang - grid 2 hoặc 4 cột):
-  - Booking sắp tới: 3
-  - Booking đang thực hiện: 2
-  - Số lượt hoàn thành: 12
-  - Số tiền có thể rút: 2.400.000đ
 
-3. Section: Lịch làm việc hôm nay
-  - Hiển thị 2–3 booking (mock)
-  - Gồm: tên người cần chăm sóc, thời gian, dịch vụ, nút “Bắt đầu”
+Tạo trang `CourseFilesPage.tsx` trong thư mục `pages/admin/`, dùng React + TypeScript + TailwindCSS.
 
-4. Section: Nhiệm vụ được giao
-  - 3 công việc cần hoàn thành
-  - Gồm: mô tả, hạn hoàn thành, trạng thái
+Yêu cầu:
+1. Dùng route param `:courseId` để xác định khóa học đang xem (mock lấy theo id)
+2. Hiển thị:
+  - Tên khóa học (mock cứng)
+  - Danh sách file tài liệu (mock cứng theo courseId)
+3. Mỗi file hiển thị:
+  - Tên file
+  - Loại file (pdf/docx/video)
+  - Ngày upload
+  - Nút "Xem", "Sửa", "Xoá"
+4. Nút "Thêm file":
+  - Mở modal upload file
+  - Cho chọn loại file (select), tên, url
+  - Lưu vào state (không upload thật)
+5. Responsive tốt, có empty state nếu chưa có file
+6. Xuất từ file `pages/admin/CourseFilesPage.tsx`
+Chỉnh file `routes/index.tsx` để thêm routing cho phần quản lý tài liệu đào tạo trong trang admin.
 
-5. Section: Gợi ý đào tạo
-  - Hiển thị 2 khoá học/training (mock)
-  - Gồm: tên khoá học, thời lượng, nút “Xem”
+Yêu cầu:
+1. Bọc các route admin trong layout `AdminLayout`
+2. Thêm 2 route con:
 
-6. Giao diện:
-  - Dùng TailwindCSS
-  - Card: `bg-white`, `rounded-lg`, `shadow`, `hover:shadow-lg`, `transition`
-  - Font lớn, icon rõ ràng, spacing thoải mái
-  - Responsive tốt
+```tsx
+<Route path="/admin" element={<AdminLayout />}>
+  <Route path="training" element={<AdminTrainingPage />} />
+  <Route path="training/:courseId/files" element={<CourseFilesPage />} />
+</Route>
+Import các component tương ứng:
 
-7. Không cần gọi API, dùng dữ liệu tĩnh/mock
-8. Xuất từ file: `pages/CareGiverDashboardPage.tsx`
+tsx
+Sao chép mã
+import AdminLayout from "@/layouts/AdminLayout";
+import AdminTrainingPage from "@/pages/admin/AdminTrainingPage";
+import CourseFilesPage from "@/pages/admin/CourseFilesPage";
+Đảm bảo khi vào /admin/training sẽ render được danh sách khoá học mock, khi ấn vào "Xem tài liệu" thì điều hướng đúng sang /admin/training/:courseId/files.
