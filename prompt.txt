@@ -1,26 +1,33 @@
-Chỉnh sửa hoặc tạo mới file `UserManagementPage.tsx` bằng React + TypeScript, dùng TailwindCSS để hiển thị danh sách người dùng từ API thật.
+Tạo component `CareGiverDashboardPage.tsx` bằng React + TypeScript, dùng TailwindCSS để thiết kế giao diện dashboard dành cho người chăm sóc (Caregiver).
 
 Yêu cầu:
-1. Gọi dữ liệu từ API:
-  - Dùng Axios để fetch dữ liệu từ:
-    https://68aed258b91dfcdd62ba657c.mockapi.io/users
-  - Gọi trong `useEffect`, lưu vào state `users`
+1. Tiêu đề chào mừng:
+  - "Chào mừng, [Tên người chăm sóc]!"
+  - Phụ đề: "Dưới đây là tổng quan về hoạt động chăm sóc của bạn"
 
-2. Hiển thị dữ liệu dạng bảng:
-  - Cột: Họ tên, Email, Vai trò (role), Trạng thái (mock: active/blocked), Hành động
-  - Dòng có hover effect, bo góc nhẹ
-  - Responsive tốt, có scroll ngang nếu bảng quá rộng
+2. Thống kê nhanh (hiển thị theo hàng ngang - grid 2 hoặc 4 cột):
+  - Booking sắp tới: 3
+  - Booking đang thực hiện: 2
+  - Số lượt hoàn thành: 12
+  - Số tiền có thể rút: 2.400.000đ
 
-3. Hành động:
-  - Nút "Xem": mở modal hoặc alert hiển thị thông tin chi tiết user
-  - Nút "Khoá" / "Mở khoá": toggle trạng thái trong local state (chưa cần gọi API PUT)
+3. Section: Lịch làm việc hôm nay
+  - Hiển thị 2–3 booking (mock)
+  - Gồm: tên người cần chăm sóc, thời gian, dịch vụ, nút “Bắt đầu”
 
-4. Giao diện:
-  - Dùng TailwindCSS cho bố cục hiện đại, rõ ràng
-  - Nút "Xem" màu indigo, "Khoá" màu đỏ nhạt, "Mở khoá" màu xanh
-  - Có loading indicator khi đang fetch data
-  - Tiêu đề trang: "Quản lý người dùng"
+4. Section: Nhiệm vụ được giao
+  - 3 công việc cần hoàn thành
+  - Gồm: mô tả, hạn hoàn thành, trạng thái
 
-5. Dữ liệu `status` (active/blocked) có thể gán ngẫu nhiên (tạm thời) vì API chưa có field này
+5. Section: Gợi ý đào tạo
+  - Hiển thị 2 khoá học/training (mock)
+  - Gồm: tên khoá học, thời lượng, nút “Xem”
 
-6. Export từ file `pages/UserManagementPage.tsx`
+6. Giao diện:
+  - Dùng TailwindCSS
+  - Card: `bg-white`, `rounded-lg`, `shadow`, `hover:shadow-lg`, `transition`
+  - Font lớn, icon rõ ràng, spacing thoải mái
+  - Responsive tốt
+
+7. Không cần gọi API, dùng dữ liệu tĩnh/mock
+8. Xuất từ file: `pages/CareGiverDashboardPage.tsx`

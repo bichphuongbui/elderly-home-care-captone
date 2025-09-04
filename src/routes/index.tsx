@@ -7,13 +7,26 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import BlogListPage from '../pages/BlogListPage';
 import BlogDetailPage from '../pages/BlogDetailPage';
-import AdminDashboardPage from '../pages/AdminDashboardPage';
-import UserManagementPage from '../pages/UserManagementPage';
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
+import UserManagementPage from '../pages/admin/UserManagementPage';
 import AdminLayout from '../layouts/AdminLayout';
+import CareSeekerLayout from '../layouts/CareSeekerLayout';
+import CareGiverLayout from '../layouts/CareGiverLayout';
 import { User } from '../services/users.service';
+import CareSeekerDashboardPage from '../pages/careseeker/CareSeekerDashboardPage';
+import CareGiverDashboardPage from '../pages/caregiver/CareGiverDashboardPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
+
+// Chuẩn hoá role để tránh lỗi sai chính tả/viết hoa/viết thường
+const normalizeRole = (role?: string): UserRole => {
+  const value = (role || '').toString().trim().toLowerCase();
+  if (['care seeker', 'care-seeker', 'careseeker', 'seeker'].includes(value)) return 'Care Seeker';
+  if (['caregiver', 'care giver', 'care-giver'].includes(value)) return 'Caregiver';
+  if (['admin', 'administrator'].includes(value)) return 'Admin';
+  return 'Guest';
+};
 
 // Hook để lấy thông tin user hiện tại
 const useCurrentUser = () => {
@@ -69,44 +82,10 @@ const FAQPage: React.FC = () => (
   </div>
 );
 
-// Dashboard components cho từng role
-const CareSeekerDashboard: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="max-w-md w-full space-y-8">
-      <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Care Seeker Dashboard
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Chào mừng bạn đến với bảng điều khiển dành cho người cần chăm sóc
-        </p>
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Tại đây bạn có thể tìm kiếm và đặt lịch với người chăm sóc
-        </p>
-      </div>
-    </div>
-  </div>
-);
 
-const CaregiverDashboard: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="max-w-md w-full space-y-8">
-      <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Caregiver Dashboard
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Chào mừng bạn đến với bảng điều khiển dành cho người chăm sóc
-        </p>
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Tại đây bạn có thể quản lý lịch làm việc và khách hàng của mình
-        </p>
-      </div>
-    </div>
-  </div>
-);
 
-// Admin dashboard is implemented in pages/AdminDashboardPage
+
+
 
 // Component redirect cho dashboard chung
 const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
@@ -114,11 +93,11 @@ const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
     return <Navigate to="/login" replace />;
   }
 
-  switch (user.role) {
+  switch (normalizeRole(user.role)) {
     case 'Care Seeker':
-      return <Navigate to="/careseeker-dashboard" replace />;
+      return <Navigate to="/care-seeker" replace />;
     case 'Caregiver':
-      return <Navigate to="/caregiver-dashboard" replace />;
+      return <Navigate to="/care-giver" replace />;
     case 'Admin':
       return <Navigate to="/admin-dashboard" replace />;
     default:
@@ -146,7 +125,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Nếu có user nhưng không có quyền truy cập
-  if (user && allowedRoles.length > 0 && !allowedRoles.includes(user.role as UserRole)) {
+  if (user && allowedRoles.length > 0 && !allowedRoles.map(normalizeRole).includes(normalizeRole(user.role))) {
     return <Navigate to="/" replace />;
   }
 
@@ -203,23 +182,46 @@ const AppRoutes: React.FC = () => {
           element={<DashboardRedirect user={user} />} 
         />
 
-        {/* Dashboard routes theo role */}
-        <Route 
-          path="/careseeker-dashboard" 
-          element={
-            <ProtectedRoute user={user} allowedRoles={['Care Seeker']}>
-              <CareSeekerDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/caregiver-dashboard" 
-          element={
-            <ProtectedRoute user={user} allowedRoles={['Caregiver']}>
-              <CaregiverDashboard />
-            </ProtectedRoute>
-          } 
-        />
+        {/* CareSeeker routes với layout */}
+         <Route 
+           path="/care-seeker"
+           element={
+             <ProtectedRoute user={user} allowedRoles={['Care Seeker']}>
+               <CareSeekerLayout>
+                 <Outlet />
+               </CareSeekerLayout>
+             </ProtectedRoute>
+           }
+         >
+           <Route index element={<CareSeekerDashboardPage />} />
+           <Route path="profile" element={<div className="p-4">Hồ sơ nhu cầu</div>} />
+           <Route path="health" element={<div className="p-4">Hồ sơ sức khỏe</div>} />
+           <Route path="caregivers" element={<div className="p-4">Ghép người chăm sóc</div>} />
+           <Route path="schedule" element={<div className="p-4">Lịch đặt hẹn</div>} />
+           <Route path="video" element={<div className="p-4">Video tư vấn</div>} />
+           <Route path="emergency" element={<div className="p-4">Cảnh báo khẩn cấp</div>} />
+         </Route>
+
+         {/* CareGiver routes với layout */}
+         <Route 
+           path="/care-giver"
+           element={
+             <ProtectedRoute user={user} allowedRoles={['Caregiver']}>
+               <CareGiverLayout>
+                 <Outlet />
+               </CareGiverLayout>
+             </ProtectedRoute>
+           }
+         >
+                       <Route index element={<CareGiverDashboardPage />} />
+           <Route path="profile" element={<div className="p-4">Hồ sơ chuyên môn</div>} />
+           <Route path="certificates" element={<div className="p-4">Chứng chỉ & kỹ năng</div>} />
+           <Route path="schedule" element={<div className="p-4">Quản lý lịch làm việc</div>} />
+           <Route path="bookings" element={<div className="p-4">Booking dịch vụ</div>} />
+           <Route path="tasks" element={<div className="p-4">Theo dõi công việc</div>} />
+           <Route path="payments" element={<div className="p-4">Rút tiền & thanh toán</div>} />
+           <Route path="training" element={<div className="p-4">Truy cập tài liệu đào tạo</div>} />
+         </Route>
         {/* Admin routes (nested under /admin) */}
         <Route 
           path="/admin"

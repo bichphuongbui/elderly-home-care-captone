@@ -66,7 +66,14 @@ export const registerUser = async (data: RegisterUserPayload): Promise<User> => 
       fullName: data.fullName,
       email: data.email,
       password: data.password,
-      role: data.role,
+      // Lưu role theo chuẩn để routing/permission không lỗi
+      role: (() => {
+        const value = data.role?.toString().trim().toLowerCase();
+        if (['care seeker', 'care-seeker', 'careseeker', 'seeker'].includes(value)) return 'Care Seeker';
+        if (['caregiver', 'care giver', 'care-giver'].includes(value)) return 'Caregiver';
+        if (['admin', 'administrator'].includes(value)) return 'Admin';
+        return 'Guest';
+      })(),
       createdAt: new Date().toISOString()
     });
     
