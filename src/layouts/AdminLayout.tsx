@@ -37,6 +37,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         ),
       },
       {
+        label: "Tài liệu đào tạo",
+        path: "/admin/training",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+            <path d="M3.75 6A2.25 2.25 0 0 1 6 3.75h10.5A2.25 2.25 0 0 1 18.75 6v12A2.25 2.25 0 0 1 16.5 20.25H6A2.25 2.25 0 0 1 3.75 18V6Zm3.75-.75A.75.75 0 0 0 6.75 6v12a.75.75 0 0 0 .75.75h9a.75.75 0 0 0 .75-.75V6a.75.75 0 0 0-.75-.75H7.5Z" />
+          </svg>
+        ),
+      },
+      {
         label: "Duyệt hồ sơ caregiver",
         path: "/admin/approvals",
         icon: (

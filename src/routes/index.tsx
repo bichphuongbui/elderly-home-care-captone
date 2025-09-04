@@ -9,6 +9,8 @@ import BlogListPage from '../pages/BlogListPage';
 import BlogDetailPage from '../pages/BlogDetailPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import UserManagementPage from '../pages/admin/UserManagementPage';
+import AdminTrainingPage from '../pages/admin/AdminTrainingPage';
+import CourseFilesPage from '../pages/admin/CourseFilesPage';
 import AdminLayout from '../layouts/AdminLayout';
 import CareSeekerLayout from '../layouts/CareSeekerLayout';
 import CareGiverLayout from '../layouts/CareGiverLayout';
@@ -236,6 +238,8 @@ const AppRoutes: React.FC = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
+          <Route path="training" element={<AdminTrainingPage />} />
+          <Route path="training/:courseId/files" element={<CourseFilesPage />} />
           <Route path="approvals" element={<div className="p-4">Duyệt hồ sơ caregiver</div>} />
           <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
