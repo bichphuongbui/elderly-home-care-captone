@@ -92,8 +92,13 @@ const LoginPage: React.FC = () => {
         // Đăng nhập thành công
         localStorage.setItem('current_user', JSON.stringify(user));
         
-        // Điều hướng đến dashboard
-        navigate('/dashboard');
+        // Nếu caregiver vẫn đang pending thì điều hướng tới trang chờ duyệt
+        if (user.role === 'Caregiver' && (user as any).status === 'pending') {
+          navigate('/care-giver/pending-approval');
+        } else {
+          // Điều hướng đến dashboard
+          navigate('/dashboard');
+        }
       } else {
         // Đăng nhập thất bại
         setErrors({

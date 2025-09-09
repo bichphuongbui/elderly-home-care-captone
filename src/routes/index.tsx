@@ -17,6 +17,9 @@ import CareGiverLayout from '../layouts/CareGiverLayout';
 import { User } from '../services/users.service';
 import CareSeekerDashboardPage from '../pages/careseeker/CareSeekerDashboardPage';
 import CareGiverDashboardPage from '../pages/caregiver/CareGiverDashboardPage';
+import UploadCredentialsPage from '../pages/caregiver/UploadCredentialsPage';
+import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
+import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -93,6 +96,11 @@ const FAQPage: React.FC = () => (
 const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Nếu caregiver đang pending, luôn đưa tới trang chờ duyệt
+  if (normalizeRole(user.role) === 'Caregiver' && (user as any).status === 'pending') {
+    return <Navigate to="/care-giver/pending-approval" replace />;
   }
 
   switch (normalizeRole(user.role)) {
@@ -240,7 +248,7 @@ const AppRoutes: React.FC = () => {
           <Route path="users" element={<UserManagementPage />} />
           <Route path="training" element={<AdminTrainingPage />} />
           <Route path="training/:courseId/files" element={<CourseFilesPage />} />
-          <Route path="approvals" element={<div className="p-4">Duyệt hồ sơ caregiver</div>} />
+          <Route path="approvals" element={<CaregiverApprovalPage />} />
           <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
           <Route path="faq" element={<div className="p-4">FAQ</div>} />
@@ -248,6 +256,26 @@ const AppRoutes: React.FC = () => {
 
         {/* Backward compatibility: old admin-dashboard path */}
         <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+
+        {/* Public caregiver upload credentials route (accessible right after registration) */}
+        <Route 
+          path="/care-giver/upload-credentials" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <UploadCredentialsPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Public caregiver pending approval page */}
+        <Route 
+          path="/care-giver/pending-approval" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <PendingApprovalPage />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* 404 route */}
         <Route path="*" element={<Navigate to="/" replace />} />

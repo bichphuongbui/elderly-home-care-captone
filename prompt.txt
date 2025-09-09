@@ -1,58 +1,42 @@
-Tạo trang `AdminTrainingPage.tsx` trong thư mục `pages/admin/`, dùng React + TypeScript + TailwindCSS.
+Tạo file `CaregiverApprovalPage.tsx` cho quản trị viên (admin) xét duyệt tài khoản caregiver.
 
-Yêu cầu:
-1. Dùng mock data để hiển thị danh sách khóa học (id, title, description, createdAt)
-2. Giao diện:
-  - Mỗi khóa học hiển thị trong card (grid 2 cột)
-  - Card gồm:
-    + Tên khoá học
-    + Mô tả ngắn
-    + Ngày tạo (format lại dd/mm/yyyy)
-    + Button: "Xem tài liệu", "Sửa", "Xoá"
-3. Chức năng:
-  - Nút "Xem tài liệu": điều hướng đến `/admin/training/:id/files`
-  - Nút "Sửa": mở modal/form chỉnh sửa (dùng useState)
-  - Nút "Xoá": xác nhận trước khi xóa khỏi mock state
-  - Nút "Thêm khóa học": nằm ở đầu trang → mở form thêm khóa học
-4. Không dùng API, chỉ dùng useState để mock dữ liệu
-5. Responsive tốt, UI rõ ràng
-6. Xuất từ file `pages/admin/AdminTrainingPage.tsx`
+---
 
+🧩 Giao diện:
+- Tiêu đề: “Xét duyệt người chăm sóc (Caregiver)”
+- Danh sách hiển thị các user:
+  - Có `role === "Caregiver"`
+  - Có `status === "pending"`
 
-Tạo trang `CourseFilesPage.tsx` trong thư mục `pages/admin/`, dùng React + TypeScript + TailwindCSS.
+---
 
-Yêu cầu:
-1. Dùng route param `:courseId` để xác định khóa học đang xem (mock lấy theo id)
-2. Hiển thị:
-  - Tên khóa học (mock cứng)
-  - Danh sách file tài liệu (mock cứng theo courseId)
-3. Mỗi file hiển thị:
-  - Tên file
-  - Loại file (pdf/docx/video)
-  - Ngày upload
-  - Nút "Xem", "Sửa", "Xoá"
-4. Nút "Thêm file":
-  - Mở modal upload file
-  - Cho chọn loại file (select), tên, url
-  - Lưu vào state (không upload thật)
-5. Responsive tốt, có empty state nếu chưa có file
-6. Xuất từ file `pages/admin/CourseFilesPage.tsx`
-Chỉnh file `routes/index.tsx` để thêm routing cho phần quản lý tài liệu đào tạo trong trang admin.
+🖥 Hiển thị mỗi caregiver trong card hoặc table với:
+- Họ tên
+- Email
+- Mô tả chứng chỉ (`credentials`)
+- Nút "Phê duyệt" → cập nhật status thành `"approved"`
+- Nút "Từ chối" → cập nhật status thành `"rejected"`
 
-Yêu cầu:
-1. Bọc các route admin trong layout `AdminLayout`
-2. Thêm 2 route con:
+---
 
+🛠 Logic xử lý:
+- Gọi `GET https://68aed258b91dfcdd62ba657c.mockapi.io/users` để lấy toàn bộ user
+- Lọc client-side: chỉ hiển thị caregivers có `status === "pending"`
+- Khi admin bấm "Phê duyệt" hoặc "Từ chối":
+  - Gọi `PUT /users/:id` để cập nhật `status`
+  - Cập nhật lại danh sách (có thể dùng state)
+
+---
+
+🧪 Yêu cầu UI:
+- Giao diện rõ ràng, dễ thao tác
+- Mỗi caregiver hiển thị trong card có:
+  - Tên, email, mô tả chứng chỉ
+  - Button nhóm: “✔ Phê duyệt” và “✖ Từ chối”
+- Có thông báo khi thao tác thành công (toast hoặc alert)
+
+---
+
+📁 Xuất file tại:
 ```tsx
-<Route path="/admin" element={<AdminLayout />}>
-  <Route path="training" element={<AdminTrainingPage />} />
-  <Route path="training/:courseId/files" element={<CourseFilesPage />} />
-</Route>
-Import các component tương ứng:
-
-tsx
-Sao chép mã
-import AdminLayout from "@/layouts/AdminLayout";
-import AdminTrainingPage from "@/pages/admin/AdminTrainingPage";
-import CourseFilesPage from "@/pages/admin/CourseFilesPage";
-Đảm bảo khi vào /admin/training sẽ render được danh sách khoá học mock, khi ấn vào "Xem tài liệu" thì điều hướng đúng sang /admin/training/:courseId/files.
+src/pages/admin/CaregiverApprovalPage.tsx
