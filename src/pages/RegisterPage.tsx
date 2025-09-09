@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import { registerUser, RegisterUserPayload, checkEmailExists } from '../services/users.service';
+import axios from 'axios';
+import { checkEmailExists } from '../services/users.service';
 
 // Interface cho form data
 interface RegisterFormData {
@@ -134,23 +135,36 @@ const RegisterPage: React.FC = () => {
         return;
       }
 
-      // Tạo payload để gửi đến API
-      const payload: RegisterUserPayload = {
-        fullName: formData.fullName.trim(),
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password,
-        role: formData.role
-      };
+      // Chuẩn bị payload theo vai trò
+      const isCaregiver = formData.role === 'Caregiver';
+      const payload = isCaregiver
+        ? {
+            fullName: formData.fullName.trim(),
+            email: formData.email.toLowerCase().trim(),
+            password: formData.password,
+            role: 'Caregiver',
+            status: 'pending',
+            credentials: ''
+          }
+        : {
+            fullName: formData.fullName.trim(),
+            email: formData.email.toLowerCase().trim(),
+            password: formData.password,
+            role: formData.role || 'Care Seeker'
+          };
 
-      // Gọi API để đăng ký user
-      const newUser = await registerUser(payload);
-      
-      // Lưu thông tin user hiện tại vào localStorage
-      localStorage.setItem('current_user', JSON.stringify(newUser));
-      
-      // Hiển thị thông báo thành công
+      // Gọi API theo yêu cầu
+      const response = await axios.post('https://68aed258b91dfcdd62ba657c.mockapi.io/users', payload);
+      const newUser = response.data;
+
+      // Lưu userId vừa đăng ký
+      if (newUser?.id) {
+        localStorage.setItem('userId', newUser.id);
+      }
+
+      // Thông báo thành công
       setSuccessMessage('Đăng ký thành công');
-      
+
       // Reset form
       setFormData({
         fullName: '',
@@ -160,11 +174,14 @@ const RegisterPage: React.FC = () => {
         role: ''
       });
       setErrors({});
-      
-      // Điều hướng đến dashboard sau 2 giây
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+
+      // Điều hướng theo vai trò
+      if (isCaregiver) {
+        navigate('/care-giver/upload-credentials');
+      } else {
+        // Care Seeker hoặc Admin
+        navigate('/login');
+      }
 
     } catch (error) {
       console.error('Lỗi đăng ký:', error);

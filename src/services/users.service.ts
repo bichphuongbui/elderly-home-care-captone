@@ -15,6 +15,9 @@ export interface User {
   password: string;
   role: string;
   createdAt: string;
+  status?: string;
+  credentials?: string;
+  credentialImage?: string;
 }
 
 // Base URL cho MockAPI
