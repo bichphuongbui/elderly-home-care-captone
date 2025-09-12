@@ -33,24 +33,46 @@ const normalizeRole = (role?: string): UserRole => {
   return 'Guest';
 };
 
-// Hook để lấy thông tin user hiện tại
+// Hook để lấy thông tin user hiện tại (phản ứng theo sự kiện đăng nhập/đăng xuất)
 const useCurrentUser = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Đọc user từ localStorage an toàn
+  const readUserFromStorage = () => {
     try {
       const storedUser = localStorage.getItem('current_user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      }
+      if (!storedUser) return null;
+      return JSON.parse(storedUser) as User;
     } catch (error) {
       console.error('Error parsing current user:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
+      return null;
     }
+  };
+
+  useEffect(() => {
+    // Khởi tạo
+    setUser(readUserFromStorage());
+    setLoading(false);
+
+    // Lắng nghe thay đổi từ các tab hoặc từ các hành động login/logout
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'current_user' || e.key === 'userId') {
+        setUser(readUserFromStorage());
+      }
+    };
+
+    const handleAuthChange = () => {
+      setUser(readUserFromStorage());
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('auth:changed', handleAuthChange as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('auth:changed', handleAuthChange as EventListener);
+    };
   }, []);
 
   return { user, loading };
@@ -109,7 +131,7 @@ const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
     case 'Caregiver':
       return <Navigate to="/care-giver" replace />;
     case 'Admin':
-      return <Navigate to="/admin-dashboard" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
     default:
       return <Navigate to="/" replace />;
   }
