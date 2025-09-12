@@ -13,7 +13,6 @@ import {
   FiX, 
   FiLogOut 
 } from 'react-icons/fi';
-import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 
 interface CareGiverLayoutProps {
@@ -45,8 +44,12 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
   };
 
   const handleLogout = () => {
-    // Xóa thông tin user khỏi localStorage
-    localStorage.removeItem('current_user');
+    // Xoá toàn bộ khoá liên quan tới phiên để tránh dính giữa các vai trò
+    try {
+      localStorage.removeItem('current_user');
+      localStorage.removeItem('userId');
+    } catch {}
+    try { window.dispatchEvent(new Event('auth:changed')); } catch {}
     // Chuyển về trang login
     navigate('/login');
   };
@@ -97,10 +100,7 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
               ))}
             </nav>
 
-            {/* Sidebar Footer */}
-            <div className="border-t border-gray-200 p-4">
-              {/* Logout Button */}
-              <button
+            <button
                 onClick={handleLogout}
                 className="flex w-full items-center rounded-lg px-3 py-3 text-left text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
               >
@@ -111,6 +111,10 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
                   <span className="ml-3 text-sm font-medium">Đăng xuất</span>
                 )}
               </button>
+            {/* Sidebar Footer */}
+            <div className="border-t border-gray-200 p-4">
+              {/* Logout Button */}
+              
               
               {sidebarOpen && (
                 <div className="text-center mt-2">

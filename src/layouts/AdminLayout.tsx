@@ -72,7 +72,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const handleLogout = () => {
     try {
       localStorage.removeItem("current_user");
+      localStorage.removeItem("userId");
     } catch {}
+    try { window.dispatchEvent(new Event('auth:changed')); } catch {}
     navigate("/login", { replace: true });
   };
 

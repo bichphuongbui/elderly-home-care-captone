@@ -32,8 +32,12 @@ const CareSeekerLayout: React.FC<CareSeekerLayoutProps> = ({ children }) => {
   };
 
   const handleLogout = () => {
-    // Xóa thông tin user khỏi localStorage
-    localStorage.removeItem('current_user');
+    // Xoá toàn bộ khoá liên quan tới phiên để tránh dính giữa các vai trò
+    try {
+      localStorage.removeItem('current_user');
+      localStorage.removeItem('userId');
+    } catch {}
+    try { window.dispatchEvent(new Event('auth:changed')); } catch {}
     // Chuyển về trang login
     navigate('/login');
   };

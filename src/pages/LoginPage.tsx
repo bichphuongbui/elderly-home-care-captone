@@ -89,15 +89,42 @@ const LoginPage: React.FC = () => {
       const user = await loginUser(formData.email.toLowerCase().trim(), formData.password);
       
       if (user) {
-        // Đăng nhập thành công
-        localStorage.setItem('current_user', JSON.stringify(user));
-        
+        // Đăng nhập thành công: chuẩn hoá role, đồng bộ storage và phát sự kiện
+        const normalizedRole = (() => {
+          const value = (user.role || '').toString().trim().toLowerCase();
+          if (['care seeker', 'care-seeker', 'careseeker', 'seeker'].includes(value)) return 'Care Seeker';
+          if (['caregiver', 'care giver', 'care-giver'].includes(value)) return 'Caregiver';
+          if (['admin', 'administrator'].includes(value)) return 'Admin';
+          return 'Guest';
+        })();
+
+        const unifiedUser = { ...user, role: normalizedRole };
+
+        try {
+          // Xoá phiên cũ tránh dính phiên
+          localStorage.removeItem('current_user');
+          localStorage.removeItem('userId');
+        } catch {}
+
+        localStorage.setItem('current_user', JSON.stringify(unifiedUser));
+        if (unifiedUser.id) {
+          localStorage.setItem('userId', unifiedUser.id);
+        }
+
+        // Thông báo cho toàn app biết đã thay đổi phiên
+        try { window.dispatchEvent(new Event('auth:changed')); } catch {}
+
         // Nếu caregiver vẫn đang pending thì điều hướng tới trang chờ duyệt
-        if (user.role === 'Caregiver' && (user as any).status === 'pending') {
-          navigate('/care-giver/pending-approval');
+        if (unifiedUser.role === 'Caregiver' && (unifiedUser as any).status === 'pending') {
+          navigate('/care-giver/pending-approval', { replace: true });
+        } else if (unifiedUser.role === 'Caregiver') {
+          navigate('/care-giver', { replace: true });
+        } else if (unifiedUser.role === 'Care Seeker') {
+          navigate('/care-seeker', { replace: true });
+        } else if (unifiedUser.role === 'Admin') {
+          navigate('/admin/dashboard', { replace: true });
         } else {
-          // Điều hướng đến dashboard
-          navigate('/dashboard');
+          navigate('/', { replace: true });
         }
       } else {
         // Đăng nhập thất bại
