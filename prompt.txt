@@ -1,42 +1,46 @@
-Tạo file `CaregiverApprovalPage.tsx` cho quản trị viên (admin) xét duyệt tài khoản caregiver.
+Tạo file `PricingPage.tsx` để hiển thị bảng giá ước lượng dành cho Guest (người chưa đăng nhập).
 
 ---
 
-🧩 Giao diện:
-- Tiêu đề: “Xét duyệt người chăm sóc (Caregiver)”
-- Danh sách hiển thị các user:
-  - Có `role === "Caregiver"`
-  - Có `status === "pending"`
+🧩 Giao diện gồm:
+1. Phần giới thiệu:
+   - Tiêu đề: “Ước tính chi phí chăm sóc người cao tuổi”
+   - Mô tả ngắn: “Chọn thời lượng chăm sóc để xem giá ước lượng. Việc thanh toán sẽ do bạn và người chăm sóc tự thỏa thuận.”
+
+2. Form chọn thông tin:
+   - Input chọn số giờ chăm sóc mỗi ngày (1–24 giờ)
+   - Input chọn số ngày chăm sóc (1–30 ngày)
+   - Button “Tính chi phí”
+
+3. Phần kết quả:
+   - Hiển thị giá ước lượng theo công thức:
+     ```
+     estimatedPrice = hoursPerDay * days * unitPrice
+     ```
+   - `unitPrice` có thể là `100,000 VNĐ / giờ`
+
+4. Có thể thêm 3 gói minh họa:
+   - Gói Cơ bản: 2h/ngày
+   - Gói Tiêu chuẩn: 4h/ngày
+   - Gói Toàn thời gian: 8h/ngày
 
 ---
 
-🖥 Hiển thị mỗi caregiver trong card hoặc table với:
-- Họ tên
-- Email
-- Mô tả chứng chỉ (`credentials`)
-- Nút "Phê duyệt" → cập nhật status thành `"approved"`
-- Nút "Từ chối" → cập nhật status thành `"rejected"`
+🧠 Logic:
+- Dùng `useState` để lưu giá trị input và kết quả
+- Tự động tính lại khi input thay đổi (hoặc nhấn nút)
+- Hiển thị kết quả rõ ràng: “Ước tính chi phí: 6,000,000đ”
 
 ---
 
-🛠 Logic xử lý:
-- Gọi `GET https://68aed258b91dfcdd62ba657c.mockapi.io/users` để lấy toàn bộ user
-- Lọc client-side: chỉ hiển thị caregivers có `status === "pending"`
-- Khi admin bấm "Phê duyệt" hoặc "Từ chối":
-  - Gọi `PUT /users/:id` để cập nhật `status`
-  - Cập nhật lại danh sách (có thể dùng state)
+💄 UI yêu cầu:
+- Canh giữa nội dung
+- Font lớn, dễ đọc
+- Dùng Tailwind với card, input, button rõ ràng
+- Responsive trên mobile
 
----
-
-🧪 Yêu cầu UI:
-- Giao diện rõ ràng, dễ thao tác
-- Mỗi caregiver hiển thị trong card có:
-  - Tên, email, mô tả chứng chỉ
-  - Button nhóm: “✔ Phê duyệt” và “✖ Từ chối”
-- Có thông báo khi thao tác thành công (toast hoặc alert)
-
----
-
-📁 Xuất file tại:
+📁 Tạo file tại:
 ```tsx
-src/pages/admin/CaregiverApprovalPage.tsx
+src/pages/PricingPage.tsx
+
+Cập nhật thông tin giá ở trang homepage chỗ section giá luôn nhanha

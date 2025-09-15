@@ -1,55 +1,51 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
-// Component hiển thị các gói dịch vụ và giá cả
+// Đồng bộ với PricingPage: dùng đơn giá tham khảo và 3 gói minh hoạ theo giờ/ngày
 const Pricing: React.FC = () => {
+  const UNIT_PRICE = 100000; // VNĐ/giờ
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
   const pricingPlans = [
     {
-      name: 'Gói Cơ Bản',
-      price: '299.000',
-      period: 'tháng',
-      description: 'Phù hợp cho gia đình có nhu cầu giám sát cơ bản',
+      name: 'Gói Cơ bản',
+      hoursPerDay: 2,
+      days: 30,
+      description: 'Ước tính cho nhu cầu chăm sóc nhẹ nhàng hằng ngày',
       features: [
-        'Giám sát sức khỏe cơ bản',
-        'Cảnh báo khẩn cấp',
-        'Báo cáo hàng tuần',
-        'Hỗ trợ qua điện thoại',
-        'Ứng dụng di động'
+        '2 giờ mỗi ngày · 30 ngày',
+        'Giờ linh hoạt theo thỏa thuận',
+        'Chi phí thực tế do hai bên thống nhất'
       ],
       popular: false,
-      buttonText: 'Chọn gói này'
+      cta: 'Tùy chỉnh trên bảng giá'
     },
     {
-      name: 'Gói Tiêu Chuẩn',
-      price: '599.000',
-      period: 'tháng',
-      description: 'Lựa chọn phổ biến với đầy đủ tính năng thiết yếu',
+      name: 'Gói Tiêu chuẩn',
+      hoursPerDay: 4,
+      days: 30,
+      description: 'Phổ biến cho theo dõi và hỗ trợ thường xuyên',
       features: [
-        'Tất cả tính năng gói Cơ Bản',
-        'Giám sát 24/7',
-        'Quản lý thuốc thông minh',
-        'Báo cáo chi tiết hàng ngày',
-        'Tư vấn y tế trực tuyến',
-        'Kết nối với 5 thành viên gia đình'
+        '4 giờ mỗi ngày · 30 ngày',
+        'Linh hoạt ca sáng/chiều',
+        'Chi phí thực tế do hai bên thống nhất'
       ],
       popular: true,
-      buttonText: 'Bắt đầu ngay'
+      cta: 'Tùy chỉnh trên bảng giá'
     },
     {
-      name: 'Gói Cao Cấp',
-      price: '999.000',
-      period: 'tháng',
-      description: 'Giải pháp toàn diện cho chăm sóc chuyên sâu',
+      name: 'Gói Toàn thời gian',
+      hoursPerDay: 8,
+      days: 30,
+      description: 'Phù hợp chăm sóc chuyên sâu & theo dõi sát sao',
       features: [
-        'Tất cả tính năng gói Tiêu Chuẩn',
-        'AI phân tích tiên tiến',
-        'Chăm sóc cá nhân hóa',
-        'Hỗ trợ y tế tại nhà',
-        'Báo cáo y tế chuyên sâu',
-        'Ưu tiên hỗ trợ 24/7',
-        'Kết nối không giới hạn thành viên'
+        '8 giờ mỗi ngày · 30 ngày',
+        'Có thể chia 2 ca',
+        'Chi phí thực tế do hai bên thống nhất'
       ],
       popular: false,
-      buttonText: 'Liên hệ tư vấn'
+      cta: 'Tùy chỉnh trên bảng giá'
     }
   ];
 
@@ -58,7 +54,7 @@ const Pricing: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Bảng giá dịch vụ
+            Ước tính chi phí nhanh
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Lựa chọn gói dịch vụ phù hợp với nhu cầu và ngân sách của gia đình bạn
@@ -66,7 +62,9 @@ const Pricing: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {pricingPlans.map((plan, index) => (
+          {pricingPlans.map((plan, index) => {
+            const estimated = plan.hoursPerDay * plan.days * UNIT_PRICE;
+            return (
             <div key={index} className={`relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow p-8 ${plan.popular ? 'ring-2 ring-primary-500 scale-105' : ''}`}>
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -80,8 +78,8 @@ const Pricing: React.FC = () => {
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                 <p className="text-gray-600 mb-6">{plan.description}</p>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-600">đ/{plan.period}</span>
+                  <span className="text-3xl md:text-4xl font-bold text-gray-900">{formatCurrency(estimated)}</span>
+                  <span className="text-gray-600"> / {plan.days} ngày</span>
                 </div>
               </div>
               
@@ -96,24 +94,24 @@ const Pricing: React.FC = () => {
                 ))}
               </ul>
               
-              <button className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
+              <Link to="/pricing" className={`block text-center w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
                 plan.popular 
                   ? 'bg-primary-600 hover:bg-primary-700 text-white' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
               }`}>
-                {plan.buttonText}
-              </button>
+                {plan.cta}
+              </Link>
             </div>
-          ))}
+          );})}
         </div>
         
         <div className="text-center mt-12">
           <p className="text-gray-600 mb-4">
-            Cần tư vấn thêm? Liên hệ với chúng tôi để được hỗ trợ tốt nhất.
+            Muốn tự ước tính chi phí theo nhu cầu thực tế? Hãy dùng công cụ tính ở trang bảng giá.
           </p>
-          <button className="border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white px-8 py-3 rounded-lg font-semibold transition-colors">
-            Liên hệ tư vấn miễn phí
-          </button>
+          <a href="/pricing" className="inline-block border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white px-8 py-3 rounded-lg font-semibold transition-colors">
+            Xem bảng giá chi tiết
+          </a>
         </div>
       </div>
     </section>

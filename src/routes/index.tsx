@@ -7,6 +7,8 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import BlogListPage from '../pages/BlogListPage';
 import BlogDetailPage from '../pages/BlogDetailPage';
+import PricingPage from '../pages/PricingPage';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import UserManagementPage from '../pages/admin/UserManagementPage';
 import AdminTrainingPage from '../pages/admin/AdminTrainingPage';
@@ -20,6 +22,7 @@ import CareGiverDashboardPage from '../pages/caregiver/CareGiverDashboardPage';
 import UploadCredentialsPage from '../pages/caregiver/UploadCredentialsPage';
 import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
 import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
+import ResetPasswordPage from '../pages/ResetPasswordPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -79,20 +82,6 @@ const useCurrentUser = () => {
 };
 
 // Placeholder components cho các trang chưa có
-const PricingPage: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="max-w-md w-full space-y-8">
-      <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Bảng Giá
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Trang này sẽ được phát triển sau
-        </p>
-      </div>
-    </div>
-  </div>
-);
 
 const FAQPage: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -201,12 +190,28 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/forgot-password" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <ForgotPasswordPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/blog" element={<BlogListPage />} />
         <Route path="/blog/:id" element={<BlogDetailPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route 
+          path="/reset-password" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <ResetPasswordPage />
+            </ProtectedRoute>
+          }
+        />
 
        
         <Route 
