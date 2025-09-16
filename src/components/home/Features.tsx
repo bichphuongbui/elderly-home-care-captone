@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 // Component hiển thị các tính năng chính của hệ thống
 const Features: React.FC = () => {
@@ -62,9 +63,12 @@ const Features: React.FC = () => {
         </div>
         
         <div className="text-center mt-12">
-          <button className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
+          <Link 
+            to="/login" 
+            className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors inline-block"
+          >
             Xem tất cả tính năng
-          </button>
+          </Link>
         </div>
       </div>
     </section>
