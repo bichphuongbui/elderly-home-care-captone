@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 // Hero section với tiêu đề chính và call-to-action
 const HeroSection: React.FC = () => {
@@ -13,26 +14,26 @@ const HeroSection: React.FC = () => {
           Giải pháp toàn diện cho việc chăm sóc sức khỏe người cao tuổi với công nghệ AI tiên tiến, 
           mang đến sự an tâm cho gia đình và chất lượng cuộc sống tốt nhất cho người thân.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors">
+        <div className="flex justify-center">
+          <Link 
+            to="/login" 
+            className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors inline-block"
+          >
             Khám phá ngay
-          </button>
-          <button className="border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors">
-            Xem demo
-          </button>
+          </Link>
         </div>
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-primary-600 mb-2">24/7</div>
-            <div className="text-gray-600">Giám sát liên tục</div>
+          <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="text-3xl font-bold text-primary-600 mb-2">500+</div>
+            <div className="text-gray-600">Chuyên gia chăm sóc</div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="text-3xl font-bold text-primary-600 mb-2">AI</div>
             <div className="text-gray-600">Công nghệ thông minh</div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-primary-600 mb-2">99.9%</div>
-            <div className="text-gray-600">Độ tin cậy cao</div>
+          <div className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="text-3xl font-bold text-primary-600 mb-2">1000+</div>
+            <div className="text-gray-600">Gia đình tin tưởng</div>
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ const Introduction: React.FC = () => {
               chuyên nghiệp để mang đến dịch vụ chăm sóc toàn diện, an toàn và hiệu quả cho người cao tuổi.
             </p>
             <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-              Với khả năng giám sát sức khỏe 24/7, phân tích dữ liệu thông minh và đưa ra cảnh báo kịp thời, 
+              Với đội ngũ chuyên gia giàu kinh nghiệm, công nghệ AI tiên tiến và hệ thống chăm sóc cá nhân hóa, 
               chúng tôi giúp gia đình yên tâm và người cao tuổi có cuộc sống chất lượng, độc lập hơn.
             </p>
             <div className="flex items-center space-x-8">
@@ -49,8 +49,8 @@ const Introduction: React.FC = () => {
                   <div className="text-sm font-medium text-gray-700">Ứng dụng di động</div>
                 </div>
                 <div className="bg-white p-4 rounded-lg text-center shadow-sm">
-                  <div className="text-3xl mb-2">👨‍⚕️</div>
-                  <div className="text-sm font-medium text-gray-700">Hỗ trợ 24/7</div>
+                  <div className="text-3xl mb-2">💝</div>
+                  <div className="text-sm font-medium text-gray-700">Chăm sóc tận tâm</div>
                 </div>
               </div>
             </div>
