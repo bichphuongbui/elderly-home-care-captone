@@ -47,7 +47,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       },
       {
         label: "Duyệt hồ sơ caregiver",
-        path: "/admin/approvals",
+        path: "/admin/caregiver-approval",
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
             <path d="M9 12.75 11.25 15l3.75-3.75M12 2.25a9.75 9.75 0 1 0 0 19.5 9.75 9.75 0 0 0 0-19.5Z" />

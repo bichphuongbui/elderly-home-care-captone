@@ -22,6 +22,8 @@ import CareGiverDashboardPage from '../pages/caregiver/CareGiverDashboardPage';
 import UploadCredentialsPage from '../pages/caregiver/UploadCredentialsPage';
 import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
 import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
+import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
+import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 
 // Types cho user role
@@ -53,20 +55,60 @@ const useCurrentUser = () => {
     }
   };
 
+  // Fetch user data từ API để đảm bảo data fresh
+  const fetchUserFromAPI = async (userId: string) => {
+    try {
+      const response = await fetch(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        // Update localStorage với data mới
+        localStorage.setItem('current_user', JSON.stringify(userData));
+        return userData;
+      }
+    } catch (error) {
+      console.error('Error fetching user from API:', error);
+    }
+    return null;
+  };
+
   useEffect(() => {
-    // Khởi tạo
-    setUser(readUserFromStorage());
-    setLoading(false);
+    const initializeUser = async () => {
+      const storedUser = readUserFromStorage();
+      if (storedUser && storedUser.id) {
+        // Fetch fresh data từ API
+        const freshUser = await fetchUserFromAPI(storedUser.id);
+        setUser(freshUser || storedUser);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    initializeUser();
 
     // Lắng nghe thay đổi từ các tab hoặc từ các hành động login/logout
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'current_user' || e.key === 'userId') {
-        setUser(readUserFromStorage());
+        const storedUser = readUserFromStorage();
+        if (storedUser && storedUser.id) {
+          fetchUserFromAPI(storedUser.id).then(freshUser => {
+            setUser(freshUser || storedUser);
+          });
+        } else {
+          setUser(null);
+        }
       }
     };
 
     const handleAuthChange = () => {
-      setUser(readUserFromStorage());
+      const storedUser = readUserFromStorage();
+      if (storedUser && storedUser.id) {
+        fetchUserFromAPI(storedUser.id).then(freshUser => {
+          setUser(freshUser || storedUser);
+        });
+      } else {
+        setUser(null);
+      }
     };
 
     window.addEventListener('storage', handleStorage);
@@ -109,11 +151,23 @@ const DashboardRedirect: React.FC<{ user: User | null }> = ({ user }) => {
     return <Navigate to="/login" replace />;
   }
 
+  console.log('DashboardRedirect - User data:', user);
+  console.log('DashboardRedirect - User role:', user.role);
+  console.log('DashboardRedirect - User status:', (user as any).status);
+
   // Nếu caregiver đang pending, luôn đưa tới trang chờ duyệt
   if (normalizeRole(user.role) === 'Caregiver' && (user as any).status === 'pending') {
+    console.log('Redirecting to pending approval page');
     return <Navigate to="/care-giver/pending-approval" replace />;
   }
 
+  // Nếu caregiver bị reject, đưa tới trang rejected
+  if (normalizeRole(user.role) === 'Caregiver' && (user as any).status === 'rejected') {
+    console.log('Redirecting to rejected page');
+    return <Navigate to="/care-giver/rejected" replace />;
+  }
+
+  console.log('Redirecting to normal dashboard');
   switch (normalizeRole(user.role)) {
     case 'Care Seeker':
       return <Navigate to="/care-seeker" replace />;
@@ -275,7 +329,8 @@ const AppRoutes: React.FC = () => {
           <Route path="users" element={<UserManagementPage />} />
           <Route path="training" element={<AdminTrainingPage />} />
           <Route path="training/:courseId/files" element={<CourseFilesPage />} />
-          <Route path="approvals" element={<CaregiverApprovalPage />} />
+          <Route path="caregiver-approval" element={<CaregiverApprovalPage />} />
+          <Route path="caregivers/:id" element={<CaregiverDetailPage />} />
           <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
           <Route path="faq" element={<div className="p-4">FAQ</div>} />
@@ -300,6 +355,16 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute user={user} requireAuth={false}>
               <PendingApprovalPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Public caregiver rejected page */}
+        <Route 
+          path="/care-giver/rejected" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <RejectedPage />
             </ProtectedRoute>
           } 
         />
