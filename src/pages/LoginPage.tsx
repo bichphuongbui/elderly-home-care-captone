@@ -114,16 +114,28 @@ const LoginPage: React.FC = () => {
         // Thông báo cho toàn app biết đã thay đổi phiên
         try { window.dispatchEvent(new Event('auth:changed')); } catch {}
 
+        console.log('Login successful - User data:', unifiedUser);
+        console.log('Login - User role:', unifiedUser.role);
+        console.log('Login - User status:', (unifiedUser as any).status);
+
         // Nếu caregiver vẫn đang pending thì điều hướng tới trang chờ duyệt
         if (unifiedUser.role === 'Caregiver' && (unifiedUser as any).status === 'pending') {
+          console.log('Redirecting caregiver to pending approval page');
           navigate('/care-giver/pending-approval', { replace: true });
+        } else if (unifiedUser.role === 'Caregiver' && (unifiedUser as any).status === 'rejected') {
+          console.log('Redirecting caregiver to rejected page');
+          navigate('/care-giver/rejected', { replace: true });
         } else if (unifiedUser.role === 'Caregiver') {
+          console.log('Redirecting caregiver to dashboard');
           navigate('/care-giver', { replace: true });
         } else if (unifiedUser.role === 'Care Seeker') {
+          console.log('Redirecting care seeker to dashboard');
           navigate('/care-seeker', { replace: true });
         } else if (unifiedUser.role === 'Admin') {
+          console.log('Redirecting admin to dashboard');
           navigate('/admin/dashboard', { replace: true });
         } else {
+          console.log('Redirecting to home page');
           navigate('/', { replace: true });
         }
       } else {

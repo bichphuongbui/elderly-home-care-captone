@@ -1,46 +1,119 @@
-Tạo file `PricingPage.tsx` để hiển thị bảng giá ước lượng dành cho Guest (người chưa đăng nhập).
+Cập nhật file `CaregiverApprovalPage.tsx` như sau:
 
 ---
 
-🧩 Giao diện gồm:
-1. Phần giới thiệu:
-   - Tiêu đề: “Ước tính chi phí chăm sóc người cao tuổi”
-   - Mô tả ngắn: “Chọn thời lượng chăm sóc để xem giá ước lượng. Việc thanh toán sẽ do bạn và người chăm sóc tự thỏa thuận.”
-
-2. Form chọn thông tin:
-   - Input chọn số giờ chăm sóc mỗi ngày (1–24 giờ)
-   - Input chọn số ngày chăm sóc (1–30 ngày)
-   - Button “Tính chi phí”
-
-3. Phần kết quả:
-   - Hiển thị giá ước lượng theo công thức:
-     ```
-     estimatedPrice = hoursPerDay * days * unitPrice
-     ```
-   - `unitPrice` có thể là `100,000 VNĐ / giờ`
-
-4. Có thể thêm 3 gói minh họa:
-   - Gói Cơ bản: 2h/ngày
-   - Gói Tiêu chuẩn: 4h/ngày
-   - Gói Toàn thời gian: 8h/ngày
+🧩 Mục tiêu:
+- Hiển thị danh sách toàn bộ caregiver, bao gồm tất cả status: `pending`, `approved`, `rejected`
+- Mỗi caregiver hiện:
+  - Họ tên
+  - Email
+  - Trạng thái
+  - Nút “Xem chi tiết”
 
 ---
 
-🧠 Logic:
-- Dùng `useState` để lưu giá trị input và kết quả
-- Tự động tính lại khi input thay đổi (hoặc nhấn nút)
-- Hiển thị kết quả rõ ràng: “Ước tính chi phí: 6,000,000đ”
+🛠 Logic:
+- Gọi API: `GET https://68aed258b91dfcdd62ba657c.mockapi.io/users?role=Caregiver`
+- Lưu danh sách vào state
+- Render table hoặc grid card cho mỗi caregiver
 
----
-
-💄 UI yêu cầu:
-- Canh giữa nội dung
-- Font lớn, dễ đọc
-- Dùng Tailwind với card, input, button rõ ràng
-- Responsive trên mobile
-
-📁 Tạo file tại:
 ```tsx
-src/pages/PricingPage.tsx
+<table>
+  <thead>...</thead>
+  <tbody>
+    {caregivers.map(c => (
+      <tr key={c.id}>
+        <td>{c.fullName}</td>
+        <td>{c.email}</td>
+        <td>{c.status}</td>
+        <td>
+          <Link to={`/admin/caregivers/${c.id}`}>Xem chi tiết</Link>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+Tạo file `CaregiverDetailPage.tsx` để hiển thị chi tiết hồ sơ của caregiver, dành cho quản trị viên xét duyệt.
 
-Cập nhật thông tin giá ở trang homepage chỗ section giá luôn nhanha
+---
+
+🧩 Vị trí:
+```tsx
+src/pages/admin/CaregiverDetailPage.tsx
+🛠 Logic:
+
+Sử dụng useParams() để lấy id từ URL:
+
+ts
+Sao chép mã
+const { id } = useParams();
+Gọi API:
+
+ts
+Sao chép mã
+GET https://68aed258b91dfcdd62ba657c.mockapi.io/users/:id
+Hiển thị thông tin:
+
+Họ tên, email (từ khi đăng ký)
+
+Toàn bộ thông tin bổ sung caregiver đã điền trong UploadCredentialsPage.tsx, ví dụ:
+
+Ngày sinh, giới tính
+
+CMND/CCCD, địa chỉ
+
+Kinh nghiệm, kỹ năng, bằng cấp
+
+Lý lịch tư pháp, tiêm phòng
+
+Người tham chiếu, cam kết
+
+Ảnh đại diện, video giới thiệu
+
+Giao diện rõ ràng:
+
+Chia thành các section hoặc accordion theo nhóm thông tin
+
+Nếu có ảnh hoặc video → hiển thị preview
+
+📦 Phần duyệt hồ sơ:
+
+Nếu user.status === "pending":
+
+Hiển thị 2 nút:
+
+✔ Phê duyệt → PATCH status: "approved"
+
+✖ Từ chối → hiện form nhập lý do từ chối → PATCH status: "rejected", rejectionReason: "..."
+
+Sau khi duyệt xong:
+
+Hiện thông báo thành công
+
+Redirect về /admin/caregiver-approval (hoặc route danh sách)
+
+🧪 UI yêu cầu:
+
+Sử dụng Tailwind hoặc UI framework nếu có
+
+Canh giữa, dễ đọc
+
+Loading khi fetch
+
+Xử lý lỗi API nếu user không tồn tại
+
+📁 Route:
+
+tsx
+Sao chép mã
+<Route path="/admin/caregivers/:id" element={<CaregiverDetailPage />} />
+📝 Ghi chú:
+
+Cho phép rejectionReason là optional
+
+Lý do từ chối có thể hiển thị ở trang RejectedPage.tsx nếu cần
+
+yaml
+Sao chép mã
+
+---
