@@ -1,68 +1,53 @@
-Tạo file `CaregiverProfilePage.tsx` cho caregiver xem và chỉnh sửa hồ sơ chuyên môn đã khai báo khi đăng ký.
+Tạo giúp tôi một file React + TypeScript có tên là `SchedulePage.tsx`, sử dụng TailwindCSS, dành cho caregiver trong hệ thống chăm sóc người cao tuổi.
+
+Đây là **trang lịch làm việc**, dạng **timetable** trực quan, cho caregiver theo dõi các ca chăm sóc đã nhận.
 
 ---
 
-🧩 Giao diện:
-- Tiêu đề: “Hồ sơ chuyên môn của bạn”
-- Dạng form, hiển thị đầy đủ các thông tin đã khai báo trước đó, chia theo 4 nhóm:
+### 📅 Yêu cầu giao diện chính:
+
+Hiển thị **lịch theo tuần**, dạng bảng 7 cột (Thứ 2 – CN), dòng là các khung giờ trong ngày (VD: 7:00 → 21:00), mỗi ô hiển thị các ca chăm sóc tương ứng nếu có.
+
+#### 1. Tiêu đề:
+- "Lịch làm việc trong tuần"
+
+#### 2. Bộ lọc ở đầu:
+- Chọn tuần (tuần hiện tại là mặc định)
+- Button chuyển tuần trước / tuần sau (← Tuần trước | Tuần sau →)
 
 ---
 
-### 1. Thông tin cơ bản _(không được sửa)_
-- Họ tên (readonly)
-- Email (readonly)
+### 🗓️ Timetable hiển thị:
+- Cột: Thứ 2 → Chủ nhật
+- Dòng: Mỗi dòng 1 khung giờ (ví dụ: 7:00, 8:00, ..., 21:00)
+- Ô nào có ca làm sẽ hiển thị:
+  - ⏰ Thời gian ca (VD: 09:00 – 11:00)
+  - 👵 Tên careseeker
+  - 📍 Địa điểm (ngắn gọn)
 
-### 2. Thông tin cá nhân & liên hệ _(được sửa)_
-- Ngày sinh
-- Giới tính
-- Số CMND/CCCD
-- Địa chỉ thường trú
-- Địa chỉ tạm trú
-- Số điện thoại
+- Màu ô khác biệt cho các trạng thái:
+  - ✅ Đã hoàn thành (màu xanh nhạt)
+  - 🔄 Đang thực hiện (màu vàng nhạt)
+  - 📌 Sắp tới (màu xanh dương nhạt)
 
----
-
-### 3. Thông tin nghề nghiệp _(được sửa)_
-- Số năm kinh nghiệm
-- Nơi từng làm việc
-- Kỹ năng chuyên môn
-- Ngôn ngữ giao tiếp
-- Bằng cấp / chứng chỉ liên quan
+- Hover vào mỗi ca hiển thị tooltip chi tiết
+- Click vào ca: dẫn đến `BookingDetailPage`
 
 ---
 
-### 4. Giấy tờ pháp lý & tham chiếu _(được sửa)_
-- Lý lịch tư pháp
-- Giấy khám sức khỏe
-- Tiêm phòng
-- Người tham chiếu (tên, sđt, mối quan hệ)
-- Cam kết đạo đức
-- Link video giới thiệu (nếu có)
-
----
-
-🛠 Logic xử lý:
-1. Lấy `userId` từ `localStorage`
-2. Gọi `GET /users/:id` để lấy dữ liệu
-3. Bind dữ liệu vào form (sử dụng `useState`)
-4. Khi nhấn nút “Lưu thay đổi”:
-   - Validate input cần thiết
-   - Gọi `PUT /users/:id` để cập nhật toàn bộ phần `profile` đã thay đổi (không cập nhật `email`, `fullName`, `role`, `status`)
+### ⚙️ Kỹ thuật:
+- Dữ liệu mock từ mảng `bookings` dạng:
 
 ```ts
-PUT /users/:id
-{
-  ...,
-  profile: {
-    ...updatedFields
-  }
-}
-🎨 UI yêu cầu:
-
-Tailwind layout chia rõ section
-
-Các trường không chỉnh sửa được thì dùng readOnly
-
-Hiển thị nút Lưu thay đổi nổi bật ở cuối
-
-Thêm loading khi đang gửi request, và thông báo khi lưu thành công
+const bookings = [
+  {
+    id: "BK001",
+    careSeekerName: "Cụ Nguyễn Văn A",
+    date: "2025-09-22", // YYYY-MM-DD
+    startTime: "09:00",
+    endTime: "11:00",
+    status: "upcoming", // "ongoing" | "completed" | "cancelled"
+    location: "Q.1, TP.HCM"
+  },
+  ...
+]
