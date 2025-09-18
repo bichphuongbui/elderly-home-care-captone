@@ -27,7 +27,6 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
   const menuItems = [
     { icon: FiHome, label: 'Dashboard', path: '/care-giver' },
     { icon: FiUser, label: 'Hồ sơ chuyên môn', path: '/care-giver/profile' },
-    { icon: FiAward, label: 'Chứng chỉ & kỹ năng', path: '/care-giver/certificates' },
     { icon: FiCalendar, label: 'Quản lý lịch làm việc', path: '/care-giver/schedule' },
     { icon: FiBookOpen, label: 'Booking dịch vụ', path: '/care-giver/bookings' },
     { icon: FiActivity, label: 'Theo dõi công việc', path: '/care-giver/tasks' },

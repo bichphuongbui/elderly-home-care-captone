@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+interface CertificateFile {
+  id: string;
+  url: string;
+  status: 'pending' | 'approved' | 'rejected';
+  uploadedAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  adminNote?: string;
+}
+
 interface CaregiverProfile {
   id: string;
   fullName: string;
@@ -26,7 +36,7 @@ interface CaregiverProfile {
       skills?: string;
       languages?: string[];
       certificates?: string;
-      certificateFiles?: string[];
+      certificateFiles?: CertificateFile[] | string[]; // Support both formats during transition
     };
     legalDocuments?: {
       criminalRecord?: string;
@@ -60,6 +70,8 @@ const CaregiverDetailPage: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [certificateNote, setCertificateNote] = useState('');
+  const [selectedCertificate, setSelectedCertificate] = useState<CertificateFile | null>(null);
 
   useEffect(() => {
     const fetchCaregiver = async () => {
@@ -195,6 +207,72 @@ const CaregiverDetailPage: React.FC = () => {
     }
   };
 
+  const handleCertificateApprove = async (certificateId: string) => {
+    if (!caregiver) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedProfile = { ...caregiver };
+      const certificateFiles = updatedProfile.profile?.professionalInfo?.certificateFiles as CertificateFile[] | undefined;
+      const certificateIndex = certificateFiles?.findIndex(
+        cert => cert.id === certificateId
+      );
+      
+      if (certificateIndex !== undefined && certificateIndex >= 0 && certificateFiles) {
+        certificateFiles[certificateIndex] = {
+          ...certificateFiles[certificateIndex],
+          status: 'approved',
+          approvedAt: new Date().toISOString(),
+          adminNote: certificateNote || 'Đã được admin duyệt'
+        };
+
+        await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${caregiver.id}`, updatedProfile);
+        setCaregiver(updatedProfile);
+        setCertificateNote('');
+        setSelectedCertificate(null);
+        alert('Đã duyệt chứng chỉ thành công!');
+      }
+    } catch (error) {
+      console.error('Lỗi khi duyệt chứng chỉ:', error);
+      alert('Có lỗi xảy ra khi duyệt chứng chỉ');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCertificateReject = async (certificateId: string) => {
+    if (!caregiver) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedProfile = { ...caregiver };
+      const certificateFiles = updatedProfile.profile?.professionalInfo?.certificateFiles as CertificateFile[] | undefined;
+      const certificateIndex = certificateFiles?.findIndex(
+        cert => cert.id === certificateId
+      );
+      
+      if (certificateIndex !== undefined && certificateIndex >= 0 && certificateFiles) {
+        certificateFiles[certificateIndex] = {
+          ...certificateFiles[certificateIndex],
+          status: 'rejected',
+          rejectedAt: new Date().toISOString(),
+          adminNote: certificateNote || 'Bị admin từ chối'
+        };
+
+        await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${caregiver.id}`, updatedProfile);
+        setCaregiver(updatedProfile);
+        setCertificateNote('');
+        setSelectedCertificate(null);
+        alert('Đã từ chối chứng chỉ thành công!');
+      }
+    } catch (error) {
+      console.error('Lỗi khi từ chối chứng chỉ:', error);
+      alert('Có lỗi xảy ra khi từ chối chứng chỉ');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -205,6 +283,19 @@ const CaregiverDetailPage: React.FC = () => {
         return <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">Bị từ chối</span>;
       default:
         return <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">Không xác định</span>;
+    }
+  };
+
+  const getCertificateStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Chờ duyệt</span>;
+      case 'approved':
+        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Đã duyệt</span>;
+      case 'rejected':
+        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Bị từ chối</span>;
+      default:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Không xác định</span>;
     }
   };
 
@@ -422,14 +513,62 @@ const CaregiverDetailPage: React.FC = () => {
                 {caregiver.profile.professionalInfo.certificateFiles && caregiver.profile.professionalInfo.certificateFiles.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-2">File chứng chỉ</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {caregiver.profile.professionalInfo.certificateFiles.map((file, index) => (
-                        <img
-                          key={index}
-                          src={file}
-                          alt={`Certificate ${index + 1}`}
-                          className="w-full h-24 object-cover rounded border"
-                        />
+                    <div className="space-y-3">
+                      {(caregiver.profile.professionalInfo.certificateFiles as CertificateFile[]).map((certificate) => (
+                        <div key={certificate.id} className="border rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              {getCertificateStatusBadge(certificate.status)}
+                              <span className="text-xs text-gray-500">
+                                Upload: {new Date(certificate.uploadedAt).toLocaleDateString('vi-VN')}
+                              </span>
+                              {certificate.approvedAt && (
+                                <span className="text-xs text-green-600">
+                                  Duyệt: {new Date(certificate.approvedAt).toLocaleDateString('vi-VN')}
+                                </span>
+                              )}
+                              {certificate.rejectedAt && (
+                                <span className="text-xs text-red-600">
+                                  Từ chối: {new Date(certificate.rejectedAt).toLocaleDateString('vi-VN')}
+                                </span>
+                              )}
+                            </div>
+                            {certificate.status === 'pending' && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedCertificate(certificate);
+                                    setCertificateNote('');
+                                  }}
+                                  disabled={isUpdating}
+                                  className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:bg-gray-400"
+                                >
+                                  Duyệt
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedCertificate(certificate);
+                                    setCertificateNote('');
+                                  }}
+                                  disabled={isUpdating}
+                                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:bg-gray-400"
+                                >
+                                  Từ chối
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <img
+                            src={certificate.url}
+                            alt={`Certificate ${certificate.id}`}
+                            className="w-full h-32 object-cover rounded border"
+                          />
+                          {certificate.adminNote && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              <strong>Ghi chú admin:</strong> {certificate.adminNote}
+                            </p>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -585,6 +724,63 @@ const CaregiverDetailPage: React.FC = () => {
           <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-red-900 mb-2">Lý do từ chối</h3>
             <p className="text-red-800">{caregiver.rejectionReason}</p>
+          </div>
+        )}
+
+        {/* Certificate Approval Modal */}
+        {selectedCertificate && (
+          <div className="mt-6 bg-white shadow-sm rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Duyệt/Từ chối chứng chỉ
+            </h3>
+            <div className="mb-4">
+              <img
+                src={selectedCertificate.url}
+                alt="Certificate"
+                className="w-full h-48 object-cover rounded border"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ghi chú (tùy chọn)
+              </label>
+              <textarea
+                value={certificateNote}
+                onChange={(e) => setCertificateNote(e.target.value)}
+                placeholder="Nhập ghi chú về chứng chỉ..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => handleCertificateApprove(selectedCertificate.id)}
+                disabled={isUpdating}
+                className={`px-6 py-2 rounded-md text-white font-medium ${
+                  isUpdating ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                ✓ Duyệt chứng chỉ
+              </button>
+              <button
+                onClick={() => handleCertificateReject(selectedCertificate.id)}
+                disabled={isUpdating}
+                className={`px-6 py-2 rounded-md text-white font-medium ${
+                  isUpdating ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                ✗ Từ chối chứng chỉ
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedCertificate(null);
+                  setCertificateNote('');
+                }}
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+            </div>
           </div>
         )}
       </div>

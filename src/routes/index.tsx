@@ -25,6 +25,7 @@ import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
 import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
+import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -75,13 +76,19 @@ const useCurrentUser = () => {
     const initializeUser = async () => {
       const storedUser = readUserFromStorage();
       if (storedUser && storedUser.id) {
-        // Fetch fresh data từ API
+        // Set user ngay lập tức từ localStorage để tránh delay
+        setUser(storedUser);
+        setLoading(false);
+        
+        // Fetch fresh data từ API trong background
         const freshUser = await fetchUserFromAPI(storedUser.id);
-        setUser(freshUser || storedUser);
+        if (freshUser) {
+          setUser(freshUser);
+        }
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initializeUser();
@@ -91,8 +98,13 @@ const useCurrentUser = () => {
       if (e.key === 'current_user' || e.key === 'userId') {
         const storedUser = readUserFromStorage();
         if (storedUser && storedUser.id) {
+          // Set user ngay lập tức từ localStorage
+          setUser(storedUser);
+          // Fetch fresh data trong background
           fetchUserFromAPI(storedUser.id).then(freshUser => {
-            setUser(freshUser || storedUser);
+            if (freshUser) {
+              setUser(freshUser);
+            }
           });
         } else {
           setUser(null);
@@ -103,8 +115,13 @@ const useCurrentUser = () => {
     const handleAuthChange = () => {
       const storedUser = readUserFromStorage();
       if (storedUser && storedUser.id) {
+        // Set user ngay lập tức từ localStorage
+        setUser(storedUser);
+        // Fetch fresh data trong background
         fetchUserFromAPI(storedUser.id).then(freshUser => {
-          setUser(freshUser || storedUser);
+          if (freshUser) {
+            setUser(freshUser);
+          }
         });
       } else {
         setUser(null);
@@ -305,8 +322,7 @@ const AppRoutes: React.FC = () => {
            }
          >
                        <Route index element={<CareGiverDashboardPage />} />
-           <Route path="profile" element={<div className="p-4">Hồ sơ chuyên môn</div>} />
-           <Route path="certificates" element={<div className="p-4">Chứng chỉ & kỹ năng</div>} />
+          <Route path="profile" element={<CaregiverProfilePage />} />
            <Route path="schedule" element={<div className="p-4">Quản lý lịch làm việc</div>} />
            <Route path="bookings" element={<div className="p-4">Booking dịch vụ</div>} />
            <Route path="tasks" element={<div className="p-4">Theo dõi công việc</div>} />

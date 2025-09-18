@@ -112,7 +112,12 @@ const LoginPage: React.FC = () => {
         }
 
         // Thông báo cho toàn app biết đã thay đổi phiên
-        try { window.dispatchEvent(new Event('auth:changed')); } catch {}
+        try { 
+          window.dispatchEvent(new Event('auth:changed')); 
+          console.log('Auth changed event dispatched');
+        } catch (error) {
+          console.error('Error dispatching auth:changed event:', error);
+        }
 
         console.log('Login successful - User data:', unifiedUser);
         console.log('Login - User role:', unifiedUser.role);
