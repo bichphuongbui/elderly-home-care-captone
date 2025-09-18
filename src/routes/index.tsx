@@ -26,6 +26,14 @@ import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
+import CaregiverTrainingPage from '../pages/caregiver/CaregiverTrainingPage';
+import CourseDetailPage from '../pages/caregiver/CourseDetailPage';
+import LessonViewerPage from '../pages/caregiver/LessonViewerPage';
+import BookingRequestPage from '../pages/caregiver/BookingRequestPage';
+import BookingDetailPage from '../pages/caregiver/BookingDetailPage';
+import BookingReportPage from '../pages/caregiver/BookingReportPage';
+import WithdrawPage from '../pages/caregiver/WithdrawPage';
+import SchedulePage from '../pages/caregiver/SchedulePage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -323,11 +331,16 @@ const AppRoutes: React.FC = () => {
          >
                        <Route index element={<CareGiverDashboardPage />} />
           <Route path="profile" element={<CaregiverProfilePage />} />
-           <Route path="schedule" element={<div className="p-4">Quản lý lịch làm việc</div>} />
-           <Route path="bookings" element={<div className="p-4">Booking dịch vụ</div>} />
+          <Route path="schedule" element={<SchedulePage />} />
+          <Route path="bookings" element={<BookingRequestPage />} />
+          <Route path="bookings/:bookingId" element={<BookingDetailPage />} />
+          <Route path="bookings/:bookingId/report" element={<BookingReportPage />} />
            <Route path="tasks" element={<div className="p-4">Theo dõi công việc</div>} />
            <Route path="payments" element={<div className="p-4">Rút tiền & thanh toán</div>} />
-           <Route path="training" element={<div className="p-4">Truy cập tài liệu đào tạo</div>} />
+          <Route path="withdraw" element={<WithdrawPage />} />
+          <Route path="training" element={<CaregiverTrainingPage />} />
+          <Route path="training/:id" element={<CourseDetailPage />} />
+          <Route path="training/:id/lesson/:lessonId" element={<LessonViewerPage />} />
          </Route>
         {/* Admin routes (nested under /admin) */}
         <Route 

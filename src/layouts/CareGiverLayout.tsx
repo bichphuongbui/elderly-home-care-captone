@@ -28,9 +28,8 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
     { icon: FiHome, label: 'Dashboard', path: '/care-giver' },
     { icon: FiUser, label: 'Hồ sơ chuyên môn', path: '/care-giver/profile' },
     { icon: FiCalendar, label: 'Quản lý lịch làm việc', path: '/care-giver/schedule' },
-    { icon: FiBookOpen, label: 'Booking dịch vụ', path: '/care-giver/bookings' },
-    { icon: FiActivity, label: 'Theo dõi công việc', path: '/care-giver/tasks' },
-    { icon: FiDollarSign, label: 'Rút tiền & thanh toán', path: '/care-giver/payments' },
+    { icon: FiBookOpen, label: 'Quản lý yêu cầu đặt lịch', path: '/care-giver/bookings' },
+    { icon: FiDollarSign, label: 'Rút tiền & thanh toán', path: '/care-giver/withdraw' },
     { icon: FiFileText, label: 'Truy cập tài liệu đào tạo', path: '/care-giver/training' },
   ];
 
