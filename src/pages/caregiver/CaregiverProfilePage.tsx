@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 interface UserData {
   id: string;
@@ -62,6 +63,7 @@ interface CaregiverProfile {
 }
 
 const CaregiverProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +138,16 @@ const CaregiverProfilePage: React.FC = () => {
     []
   );
 
+  // Parse free-text skills to display as chips (read-only)
+  const parsedSkills = useMemo(() => {
+    const raw = professionalInfo.skills || '';
+    return raw
+      .split(/\n|,|;/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+  }, [professionalInfo.skills]);
+
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem('userId');
@@ -202,6 +214,40 @@ const CaregiverProfilePage: React.FC = () => {
             profilePhoto: profile.additionalProfile?.profilePhoto || ''
           }));
         }
+        
+        // Merge locally saved full profile (with images) as fallback when API strips base64
+        try {
+          const localFullStr = localStorage.getItem('caregiver_profile_full');
+          if (localFullStr) {
+            const localFull = JSON.parse(localFullStr) as CaregiverProfile;
+            if (localFull.personalInfo?.idCardFront || localFull.personalInfo?.idCardBack) {
+              setPersonalInfo(prev => ({
+                ...prev,
+                idCardFront: localFull.personalInfo?.idCardFront || prev.idCardFront,
+                idCardBack: localFull.personalInfo?.idCardBack || prev.idCardBack,
+              }));
+              setFilePreviews(prev => ({
+                ...prev,
+                idCardFront: localFull.personalInfo?.idCardFront || prev.idCardFront,
+                idCardBack: localFull.personalInfo?.idCardBack || prev.idCardBack,
+              }));
+            }
+            if (localFull.additionalProfile?.profilePhoto) {
+              setAdditionalProfile(prev => ({ ...prev, profilePhoto: localFull.additionalProfile?.profilePhoto || prev.profilePhoto }));
+              setFilePreviews(prev => ({ ...prev, profilePhoto: localFull.additionalProfile?.profilePhoto || prev.profilePhoto }));
+            }
+            if (Array.isArray((localFull as any)?.professionalInfo?.certificateFiles)) {
+              const localCerts = (localFull as any).professionalInfo.certificateFiles as any[];
+              // Support both string[] and CertificateFile[]
+              const normalized: CertificateFile[] = localCerts.map((c: any, idx: number) => typeof c === 'string' 
+                ? ({ id: `local-${idx}`, url: c, status: 'pending', uploadedAt: new Date().toISOString() })
+                : c);
+              // Keep only approved for previews, pending for info
+              setCertificatePreviews(prev => prev.length ? prev : normalized.filter(c => c.status === 'approved'));
+              setPendingCertificates(prev => prev.length ? prev : normalized.filter(c => c.status === 'pending'));
+            }
+          }
+        } catch {}
         
         if (profile.professionalInfo?.certificateFiles) {
           // Handle both old format (string[]) and new format (CertificateFile[])
@@ -377,67 +423,7 @@ const CaregiverProfilePage: React.FC = () => {
     }
   };
 
-  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        setMessage(`File ${file.name} quá lớn (tối đa 5MB).`);
-        return false;
-      }
-      return true;
-    });
-
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const newCertificate: CertificateFile = {
-          id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          url: dataUrl,
-          status: 'pending',
-          uploadedAt: new Date().toISOString()
-        };
-        
-        setPendingCertificates(prev => [...prev, newCertificate]);
-        setProfessionalInfo(prev => ({
-          ...prev,
-          certificateFiles: [...(prev.certificateFiles as CertificateFile[]), newCertificate]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    // Show notification about admin approval requirement
-    if (validFiles.length > 0) {
-      setCertificateNotifications(prev => [
-        ...prev,
-        `Đã upload ${validFiles.length} chứng chỉ và đang chờ admin duyệt.`
-      ]);
-      setMessage('Chứng chỉ đã được upload và đang chờ admin duyệt. Bạn sẽ được thông báo khi có kết quả.');
-    }
-  };
-
-  const removeCertificate = (certificateId: string) => {
-    setCertificatePreviews(prev => {
-      const newPreviews = prev.filter(cert => cert.id !== certificateId);
-      setProfessionalInfo(prev => ({
-        ...prev,
-        certificateFiles: (prev.certificateFiles as CertificateFile[]).filter(cert => cert.id !== certificateId)
-      }));
-      return newPreviews;
-    });
-  };
-
-  const removePendingCertificate = (certificateId: string) => {
-    setPendingCertificates(prev => {
-      const newPending = prev.filter(cert => cert.id !== certificateId);
-      setProfessionalInfo(prev => ({
-        ...prev,
-        certificateFiles: (prev.certificateFiles as CertificateFile[]).filter(cert => cert.id !== certificateId)
-      }));
-      return newPending;
-    });
-  };
+  // Upload/sửa chứng chỉ được chuyển sang trang Chứng chỉ & Kỹ năng
 
   const clearNotification = (index: number) => {
     setCertificateNotifications(prev => prev.filter((_, i) => i !== index));
@@ -880,15 +866,27 @@ const CaregiverProfilePage: React.FC = () => {
             <input type="text" value={professionalInfo.previousWorkplace} onChange={(e) => setProfessionalInfo(prev => ({ ...prev, previousWorkplace: e.target.value }))} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Kỹ năng chuyên môn</label>
-            <textarea
-              value={professionalInfo.skills}
-              onChange={(e) => setProfessionalInfo(prev => ({ ...prev, skills: e.target.value }))}
-              onBlur={() => {}}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows={4}
-              placeholder="Mô tả kỹ năng của bạn..."
-            />
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">Kỹ năng chuyên môn (chỉ hiển thị)</label>
+              <button
+                type="button"
+                onClick={() => navigate('/care-giver/certificates')}
+                className="text-sm text-blue-600 hover:text-blue-700 underline"
+              >
+                Quản lý tại trang Chứng chỉ & Kỹ năng
+              </button>
+            </div>
+            {parsedSkills.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {parsedSkills.map((skill, idx) => (
+                  <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-gray-500">Chưa có kỹ năng nào. Vui lòng thêm ở trang Chứng chỉ & Kỹ năng.</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700">Ngôn ngữ giao tiếp</label>
@@ -914,23 +912,33 @@ const CaregiverProfilePage: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Bằng cấp / chứng chỉ liên quan</label>
-            <textarea value={professionalInfo.certificates} onChange={(e) => setProfessionalInfo(prev => ({ ...prev, certificates: e.target.value }))} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" rows={3} />
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">Bằng cấp / chứng chỉ liên quan (chỉ hiển thị)</label>
+              <button
+                type="button"
+                onClick={() => navigate('/care-giver/certificates')}
+                className="text-sm text-blue-600 hover:text-blue-700 underline"
+              >
+                Quản lý tại trang Chứng chỉ & Kỹ năng
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-gray-600">Các chứng chỉ đã duyệt được hiển thị ở phần trên. Vui lòng thêm/sửa chứng chỉ tại trang Chứng chỉ & Kỹ năng.</p>
           </div>
           
-          {/* Certificate Files Upload */}
+          {/* Approved Certificates (read-only) */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload file chứng chỉ, bằng cấp
-            </label>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-              multiple
-              onChange={handleCertificateUpload}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <p className="text-xs text-gray-500 mt-1">Có thể upload nhiều file (PDF, JPG, PNG, DOC, DOCX) - tối đa 5MB/file</p>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Chứng chỉ đã được duyệt (chỉ hiển thị)
+              </label>
+              <button
+                type="button"
+                onClick={() => navigate('/care-giver/certificates')}
+                className="text-sm text-blue-600 hover:text-blue-700 underline"
+              >
+                Xem chi tiết / Chỉnh sửa tại trang Chứng chỉ & Kỹ năng
+              </button>
+            </div>
             
             {/* Approved Certificates */}
             {certificatePreviews.length > 0 && (
@@ -954,20 +962,14 @@ const CaregiverProfilePage: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeCertificate(certificate.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        ✕
-                      </button>
+                      {/* No edit/delete here */}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Pending Certificates */}
+            {/* Pending Certificates - info only */}
             {pendingCertificates.length > 0 && (
               <div className="mt-3">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Chứng chỉ đang chờ duyệt:</h4>
@@ -989,13 +991,7 @@ const CaregiverProfilePage: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removePendingCertificate(certificate.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        ✕
-                      </button>
+                      {/* No remove here */}
                     </div>
                   ))}
                 </div>

@@ -2,16 +2,15 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   FiHome, 
-  FiUser, 
-  FiAward, 
+  FiUser,  
   FiCalendar, 
-  FiBookOpen, 
-  FiActivity, 
+  FiBookOpen,  
   FiDollarSign, 
   FiFileText, 
   FiMenu, 
   FiX, 
-  FiLogOut 
+  FiLogOut,
+  FiAward
 } from 'react-icons/fi';
 import Footer from '../components/layout/Footer';
 
@@ -27,6 +26,7 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
   const menuItems = [
     { icon: FiHome, label: 'Dashboard', path: '/care-giver' },
     { icon: FiUser, label: 'Hồ sơ chuyên môn', path: '/care-giver/profile' },
+    { icon: FiAward, label: 'Chứng chỉ & Kỹ năng', path: '/care-giver/certificates' },
     { icon: FiCalendar, label: 'Quản lý lịch làm việc', path: '/care-giver/schedule' },
     { icon: FiBookOpen, label: 'Quản lý yêu cầu đặt lịch', path: '/care-giver/bookings' },
     { icon: FiDollarSign, label: 'Rút tiền & thanh toán', path: '/care-giver/withdraw' },

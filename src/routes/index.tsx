@@ -34,6 +34,7 @@ import BookingDetailPage from '../pages/caregiver/BookingDetailPage';
 import BookingReportPage from '../pages/caregiver/BookingReportPage';
 import WithdrawPage from '../pages/caregiver/WithdrawPage';
 import SchedulePage from '../pages/caregiver/SchedulePage';
+import CaregiverCertificatesSkillsPage from '../pages/caregiver/CaregiverCertificatesSkillsPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -331,6 +332,7 @@ const AppRoutes: React.FC = () => {
          >
                        <Route index element={<CareGiverDashboardPage />} />
           <Route path="profile" element={<CaregiverProfilePage />} />
+          <Route path="certificates" element={<CaregiverCertificatesSkillsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="bookings" element={<BookingRequestPage />} />
           <Route path="bookings/:bookingId" element={<BookingDetailPage />} />

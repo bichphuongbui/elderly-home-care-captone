@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCalendar, FiClock, FiCheckCircle, FiMessageCircle, FiFileText, FiBookOpen, FiAlertTriangle, FiBell, FiChevronRight } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiCheckCircle, FiMessageCircle, FiFileText, FiBookOpen, FiAlertTriangle, FiBell, FiChevronRight, FiPlay, FiList } from 'react-icons/fi';
 
 const CareGiverDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -127,10 +127,10 @@ const CareGiverDashboardPage: React.FC = () => {
 
   // Fake metrics/messages/reports
   const metrics = useMemo(() => ({
-    completed: 12,
+    monthlyAppointments: 28,
     upcomingThisWeek: 5,
-    unreadMessages: 3,
-    recentReports: 2,
+    averageRating: 4.8,
+    totalReviews: 156,
   }), []);
 
   // Notifications for bell icon
@@ -143,23 +143,99 @@ const CareGiverDashboardPage: React.FC = () => {
     if (profileStatus === 'pending') {
       items.push({ id: 2, type: 'profile', message: 'Hồ sơ đang chờ duyệt. Bạn sẽ được thông báo khi có kết quả.', icon: <FiAlertTriangle className="h-4 w-4 text-yellow-600" /> });
     }
-    items.push({ id: 3, type: 'report', message: 'Bạn còn báo cáo chưa nộp cho 2 ca gần đây.', action: () => navigate('/care-giver/tasks'), icon: <FiFileText className="h-4 w-4 text-blue-600" /> });
+    
     items.push({ id: 4, type: 'training', message: 'Có tài liệu đào tạo mới về xử lý khẩn cấp.', action: () => navigate('/care-giver/training'), icon: <FiBookOpen className="h-4 w-4 text-purple-600" /> });
     return items;
   }, [navigate, profileStatus]);
 
-  // Today's tasks with checkboxes
-  const [todayTasks, setTodayTasks] = useState([
-    { id: 1, description: "Cập nhật hồ sơ bệnh nhân Bà Nguyễn Thị B", completed: false },
-    { id: 2, description: "Hoàn thành báo cáo ca làm việc sáng", completed: true },
-    { id: 3, description: "Kiểm tra thuốc và dụng cụ y tế", completed: false },
-    { id: 4, description: "Gọi điện báo cáo tình hình cho gia đình", completed: false }
-  ]);
+  // Today's appointments and task management
+  const todayAppointments = useMemo(() => {
+    return scheduleEvents.filter(event => event.date === formatISODate(today));
+  }, [scheduleEvents, today]);
 
-  const toggleTask = (taskId: number) => {
-    setTodayTasks(tasks => tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+  // State for active appointment and tasks
+  const [activeAppointmentId, setActiveAppointmentId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('activeAppointmentId');
+    return saved ? parseInt(saved) : null;
+  });
+  
+  const [appointmentTasks, setAppointmentTasks] = useState<{[key: number]: Array<{id: number, description: string, completed: boolean}>}>({});
+
+  // Initialize appointment tasks only once on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('appointmentTasks');
+    let existingTasks: {[key: number]: Array<{id: number, description: string, completed: boolean}>} = {};
+    
+    if (saved) {
+      try {
+        existingTasks = JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing appointment tasks:', e);
+      }
+    }
+
+    setAppointmentTasks(existingTasks);
+  }, []); // Only run once on mount
+
+  // Separate effect to create default tasks for new appointments
+  useEffect(() => {
+    setAppointmentTasks(prev => {
+      const newTasks = { ...prev };
+      let hasNewTasks = false;
+      
+      todayAppointments.forEach(appointment => {
+        if (!newTasks[appointment.id]) {
+          newTasks[appointment.id] = [
+            { id: 1, description: `Chuẩn bị dụng cụ cho ${appointment.service.toLowerCase()}`, completed: false },
+            { id: 2, description: `Kiểm tra tình trạng sức khỏe ${appointment.patientName}`, completed: false },
+            { id: 3, description: `Thực hiện ${appointment.service.toLowerCase()}`, completed: false },
+            { id: 4, description: `Ghi chép báo cáo cuộc hẹn`, completed: false },
+            { id: 5, description: `Liên hệ gia đình về tình hình`, completed: false }
+          ];
+          hasNewTasks = true;
+        }
+      });
+      
+      return hasNewTasks ? newTasks : prev;
+    });
+  }, [todayAppointments.length]); // Only depend on the length, not the whole array
+
+  // Save to localStorage whenever states change
+  useEffect(() => {
+    if (activeAppointmentId !== null) {
+      localStorage.setItem('activeAppointmentId', activeAppointmentId.toString());
+    } else {
+      localStorage.removeItem('activeAppointmentId');
+    }
+  }, [activeAppointmentId]);
+
+  useEffect(() => {
+    // Only save to localStorage if appointmentTasks is not empty
+    if (Object.keys(appointmentTasks).length > 0) {
+      localStorage.setItem('appointmentTasks', JSON.stringify(appointmentTasks));
+    }
+  }, [appointmentTasks]);
+
+  const startAppointment = (appointmentId: number) => {
+    if (activeAppointmentId && activeAppointmentId !== appointmentId) {
+      alert('Bạn đang trong cuộc hẹn khác. Vui lòng hoàn thành cuộc hẹn hiện tại trước khi bắt đầu cuộc hẹn mới.');
+      return;
+    }
+    setActiveAppointmentId(appointmentId);
+  };
+
+  const toggleAppointmentTask = (appointmentId: number, taskId: number) => {
+    setAppointmentTasks(prev => ({
+      ...prev,
+      [appointmentId]: prev[appointmentId]?.map(task => 
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      ) || []
+    }));
+  };
+
+  const finishAppointment = () => {
+    setActiveAppointmentId(null);
+    // Keep the tasks data for future reference
   };
 
   // Week view data
@@ -254,8 +330,8 @@ const CareGiverDashboardPage: React.FC = () => {
               <FiCheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Số ca đã hoàn thành</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.completed}</p>
+              <p className="text-sm font-medium text-gray-600">Số lịch hẹn tháng này</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.monthlyAppointments}</p>
             </div>
           </div>
         </div>
@@ -265,7 +341,7 @@ const CareGiverDashboardPage: React.FC = () => {
               <FiCalendar className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Ca sắp tới trong tuần</p>
+              <p className="text-sm font-medium text-gray-600">Lịch hẹn sắp tới trong tuần</p>
               <p className="text-2xl font-bold text-gray-900">{metrics.upcomingThisWeek}</p>
             </div>
           </div>
@@ -276,8 +352,8 @@ const CareGiverDashboardPage: React.FC = () => {
               <FiMessageCircle className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tin nhắn chưa đọc</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.unreadMessages}</p>
+              <p className="text-sm font-medium text-gray-600">Đánh giá trung bình</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.averageRating}/5</p>
             </div>
           </div>
         </div>
@@ -287,8 +363,8 @@ const CareGiverDashboardPage: React.FC = () => {
               <FiFileText className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Báo cáo gần đây</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.recentReports}</p>
+              <p className="text-sm font-medium text-gray-600">Tổng số đánh giá</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalReviews}</p>
             </div>
           </div>
         </div>
@@ -323,11 +399,13 @@ const CareGiverDashboardPage: React.FC = () => {
                   </div>
                   <div className="mt-2 space-y-1">
                     <div className="text-xs text-gray-600">
-                      <span className="font-medium">{dayEvents.length}</span> ca
+                      <span className="font-medium">{dayEvents.length}</span> lịch hẹn
                     </div>
-                    <div className="text-xs text-gray-600">
-                      <span className="font-medium">{Math.floor(Math.random() * 3) + 1}</span> nhiệm vụ
-                    </div>
+                    {dayEvents.length > 0 && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">{dayEvents.length * 2}</span> nhiệm vụ
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -336,30 +414,111 @@ const CareGiverDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Today's tasks */}
+      {/* Today's appointments */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <FiCheckCircle className="h-5 w-5 mr-2 text-green-600" />
-          Nhiệm vụ hôm nay
+          <FiCalendar className="h-5 w-5 mr-2 text-blue-600" />
+          Cuộc hẹn hôm nay
         </h2>
-        <div className="space-y-3">
-          {todayTasks.map((task) => (
-            <div key={task.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <input
-                type="checkbox"
-                checked={task.completed}
-                onChange={() => toggleTask(task.id)}
-                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                {task.description}
-              </span>
-              {task.completed && (
-                <FiCheckCircle className="h-4 w-4 text-green-600" />
-              )}
-            </div>
-          ))}
-        </div>
+        
+        {todayAppointments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <FiCalendar className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+            <p>Không có cuộc hẹn nào hôm nay</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {todayAppointments.map((appointment) => {
+              const isActive = activeAppointmentId === appointment.id;
+              const hasStarted = appointmentTasks[appointment.id]?.some(task => task.completed) || isActive;
+              
+              return (
+                <div key={appointment.id} className={`border rounded-lg p-4 ${isActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="font-semibold text-gray-900">{appointment.patientName}</h3>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          appointment.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          appointment.status === 'in-progress' || isActive ? 'bg-blue-100 text-blue-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {appointment.status === 'completed' ? 'Hoàn thành' :
+                           appointment.status === 'in-progress' || isActive ? 'Đang thực hiện' :
+                           'Sắp tới'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{appointment.service}</p>
+                      <p className="text-sm text-gray-500">
+                        <FiClock className="inline h-4 w-4 mr-1" />
+                        {appointment.start} - {appointment.end} • {appointment.location}
+                      </p>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {!isActive && !hasStarted && (
+                        <button
+                          onClick={() => startAppointment(appointment.id)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                        >
+                          <FiPlay className="h-4 w-4" />
+                          <span>Bắt đầu</span>
+                        </button>
+                      )}
+                      
+                      {(isActive || hasStarted) && (
+                        <button
+                          onClick={() => setActiveAppointmentId(isActive ? null : appointment.id)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                        >
+                          <FiList className="h-4 w-4" />
+                          <span>{isActive ? 'Ẩn nhiệm vụ' : 'Chi tiết nhiệm vụ'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Tasks for active appointment */}
+                  {isActive && appointmentTasks[appointment.id] && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                        <FiCheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                        Nhiệm vụ cần thực hiện
+                      </h4>
+                      <div className="space-y-2">
+                        {appointmentTasks[appointment.id].map((task) => (
+                          <div key={task.id} className="flex items-center space-x-3 p-2 bg-white rounded border">
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => toggleAppointmentTask(appointment.id, task.id)}
+                              className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className={`flex-1 text-sm ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                              {task.description}
+                            </span>
+                            {task.completed && (
+                              <FiCheckCircle className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => finishAppointment()}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                        >
+                          Hoàn thành cuộc hẹn
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Removed Tasks section per request */}
@@ -375,7 +534,7 @@ const CareGiverDashboardPage: React.FC = () => {
               </div>
               <div>
                 <p className="font-medium text-gray-900">Xem lịch làm việc</p>
-                <p className="text-sm text-gray-600">Quản lý ca làm sắp tới</p>
+                <p className="text-sm text-gray-600">Quản lý lịch hẹn sắp tới</p>
               </div>
             </div>
           </button>
@@ -386,7 +545,7 @@ const CareGiverDashboardPage: React.FC = () => {
               </div>
               <div>
                 <p className="font-medium text-gray-900">Gửi báo cáo</p>
-                <p className="text-sm text-gray-600">Hoàn thành biên bản ca</p>
+                <p className="text-sm text-gray-600">Hoàn thành biên bản lịch hẹn</p>
               </div>
             </div>
           </button>
@@ -397,7 +556,7 @@ const CareGiverDashboardPage: React.FC = () => {
               </div>
               <div>
                 <p className="font-medium text-gray-900">Xem yêu cầu booking</p>
-                <p className="text-sm text-gray-600">Nhận ca phù hợp</p>
+                <p className="text-sm text-gray-600">Nhận lịch hẹn phù hợp</p>
               </div>
             </div>
           </button>
