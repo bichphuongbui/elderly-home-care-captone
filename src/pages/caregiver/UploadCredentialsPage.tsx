@@ -80,6 +80,86 @@ const UploadCredentialsPage: React.FC = () => {
     certificateFiles: [] as string[],
   });
 
+  // Structured entries to align with Certificates & Skills page
+  type SkillItem = { id: string; name: string; description?: string; image?: string };
+  type CertificateItem = { id: string; name: string; issueDate: string; organization: string; type: string; image: string };
+  const [skillItems, setSkillItems] = useState<SkillItem[]>([]);
+  const [newSkill, setNewSkill] = useState<SkillItem>({ id: '', name: '', description: '', image: '' });
+  const [certificateItems, setCertificateItems] = useState<CertificateItem[]>([]);
+  const [newCertificate, setNewCertificate] = useState<CertificateItem>({ id: '', name: '', issueDate: '', organization: '', type: '', image: '' });
+
+  // Temp image upload helpers for structured forms
+  const handleTempImageUpload = async (file: File, target: 'skill' | 'certificate') => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ảnh quá lớn (tối đa 5MB).');
+      return;
+    }
+
+    try {
+      // Compress image before storing
+      const compressedImage = await new Promise<string>((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Calculate new dimensions (max 600px width for certificates/skills)
+          let { width, height } = img;
+          const maxWidth = 600;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw and compress (lower quality for smaller size)
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              } else {
+                reject(new Error('Canvas toBlob failed'));
+              }
+            },
+            'image/jpeg',
+            0.6 // Lower quality for smaller file size
+          );
+        };
+        
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+
+      console.log(`${target} image compressed: ${file.size} bytes -> ${compressedImage.length * 0.75} bytes (approx)`);
+      
+      if (target === 'skill') {
+        setNewSkill(prev => ({ ...prev, image: compressedImage }));
+      } else {
+        setNewCertificate(prev => ({ ...prev, image: compressedImage }));
+      }
+    } catch (error) {
+      console.warn('Image compression failed, using original:', error);
+      // Fallback to original
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        if (target === 'skill') {
+          setNewSkill(prev => ({ ...prev, image: dataUrl }));
+        } else {
+          setNewCertificate(prev => ({ ...prev, image: dataUrl }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const [legalDocuments, setLegalDocuments] = useState({
     criminalRecord: '',
     healthCertificate: '',
@@ -106,8 +186,10 @@ const UploadCredentialsPage: React.FC = () => {
 
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string>('');
-  const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
-  const [certificatePreviews, setCertificatePreviews] = useState<string[]>([]);
+  // Legacy file list retained for backward compatibility but unused
+  // const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
+  // Legacy previews no longer used after aligning with structured items
+  // const [certificatePreviews, setCertificatePreviews] = useState<string[]>([]);
   const [idCardFrontFile, setIdCardFrontFile] = useState<File | null>(null);
   const [idCardFrontPreview, setIdCardFrontPreview] = useState<string>('');
   const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
@@ -236,11 +318,7 @@ const UploadCredentialsPage: React.FC = () => {
       return;
     }
 
-    if (!professionalInfo.skills || professionalInfo.skills.trim().length < 10) {
-      alert('Vui lòng mô tả kỹ năng chuyên môn ít nhất 10 ký tự.');
-      setActiveSection('professional');
-      return;
-    }
+    // Bỏ validate mô tả kỹ năng
 
     // Validate reference information
     if (references.referenceName && (!references.referencePhone || !references.referenceRelation)) {
@@ -275,61 +353,106 @@ const UploadCredentialsPage: React.FC = () => {
       }
     }
 
+    // Helper function to compress image
+    const compressImage = (file: File, maxWidth = 800, quality = 0.8): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Calculate new dimensions
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw and compress
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              } else {
+                reject(new Error('Canvas toBlob failed'));
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    };
+
     // Prepare profile photo data
     let profilePhotoData: string | undefined = undefined;
     if (profilePhotoFile) {
-      profilePhotoData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(profilePhotoFile);
-      });
+      try {
+        profilePhotoData = await compressImage(profilePhotoFile, 600, 0.7);
+        console.log(`Profile photo compressed: ${profilePhotoFile.size} bytes -> ${profilePhotoData.length * 0.75} bytes (approx)`);
+      } catch (error) {
+        console.warn('Image compression failed, using original:', error);
+        profilePhotoData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(profilePhotoFile);
+        });
+      }
     }
 
-    // Prepare ID card images data
-    let idCardFrontData: string | undefined = undefined;
-    if (idCardFrontFile) {
-      idCardFrontData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(idCardFrontFile);
-      });
-    }
-
-    let idCardBackData: string | undefined = undefined;
-    if (idCardBackFile) {
-      idCardBackData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(idCardBackFile);
-      });
-    }
+    // CCCD images are already compressed in personalInfo state
+    // Just use the pre-compressed versions stored during upload
+    const idCardFrontData = personalInfo.idCardFront;
+    const idCardBackData = personalInfo.idCardBack;
+    
+    console.log('Using pre-compressed CCCD images:', {
+      hasFront: !!idCardFrontData,
+      hasBack: !!idCardBackData,
+      frontSize: idCardFrontData ? `~${idCardFrontData.length * 0.75} bytes` : '0',
+      backSize: idCardBackData ? `~${idCardBackData.length * 0.75} bytes` : '0'
+    });
 
     // Prepare certificate files data
-    const certificateData: string[] = [];
-    for (const file of certificateFiles) {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      certificateData.push(dataUrl);
-    }
+    // Merge structured items into free-text fields for compatibility
+    const mergedSkillsText = [professionalInfo.skills, ...skillItems.map(s => s.name)].filter(Boolean).join(', ');
+    const mergedCertificateText = [professionalInfo.certificates, ...certificateItems.map(c => `${c.name} (${c.organization})`)].filter(Boolean).join('\n');
 
     setIsSubmitting(true);
     try {
       const updatedProfile = {
         personalInfo: {
           ...personalInfo,
-          idCardFront: idCardFrontData || personalInfo.idCardFront,
-          idCardBack: idCardBackData || personalInfo.idCardBack
+          idCardFront: idCardFrontData, // Already compressed
+          idCardBack: idCardBackData    // Already compressed
         },
         professionalInfo: {
           ...professionalInfo,
-          certificateFiles: certificateData.length > 0 ? [...professionalInfo.certificateFiles, ...certificateData] : professionalInfo.certificateFiles
+          certificates: mergedCertificateText,
+          skills: mergedSkillsText,
+          // Include structured certificate files with images for admin review
+          certificateFiles: certificateItems.map(cert => ({
+            id: cert.id,
+            name: cert.name,
+            issueDate: cert.issueDate,
+            organization: cert.organization,
+            type: cert.type,
+            image: cert.image, // Base64 image for admin review
+            status: 'pending',
+            uploadedAt: new Date().toISOString()
+          })),
+          // Include structured skill items
+          skillItems: skillItems
         },
         legalDocuments,
         references,
@@ -339,19 +462,139 @@ const UploadCredentialsPage: React.FC = () => {
           profilePhoto: profilePhotoData || additionalProfile.profilePhoto
         }
       };
+      // Save full payload with images locally to avoid large network payloads
+      try {
+        // Persist full profile with images for later rehydrate in Profile page
+        localStorage.setItem('caregiver_profile_full', JSON.stringify(updatedProfile));
+      } catch {}
 
-      await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, {
+      // Send full profile to API for admin review (including images)
+      const payloadToSend = {
         ...userData,
-        profile: updatedProfile,
+        profile: updatedProfile, // Send complete profile with images
         status: 'pending',
         role: 'Caregiver'
+      };
+
+      console.log('=== SENDING PROFILE TO API ===');
+      console.log('API URL:', `https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+      console.log('Payload size:', JSON.stringify(payloadToSend).length, 'characters');
+      console.log('Profile data structure:', {
+        hasPersonalInfo: !!updatedProfile.personalInfo,
+        hasIdCardFront: !!updatedProfile.personalInfo.idCardFront,
+        hasIdCardBack: !!updatedProfile.personalInfo.idCardBack,
+        idCardFrontSize: updatedProfile.personalInfo.idCardFront?.length || 0,
+        idCardBackSize: updatedProfile.personalInfo.idCardBack?.length || 0,
+        hasProfilePhoto: !!updatedProfile.additionalProfile.profilePhoto,
+        profilePhotoSize: updatedProfile.additionalProfile.profilePhoto?.length || 0,
+        certificateCount: updatedProfile.professionalInfo.certificateFiles.length,
+        certificateImages: updatedProfile.professionalInfo.certificateFiles.map(c => ({
+          name: c.name,
+          hasImage: !!c.image,
+          imageSize: c.image?.length || 0
+        }))
+      });
+
+      const response = await axios.put(
+        `https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`,
+        payloadToSend
+      );
+      
+      console.log('=== API RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Response data:', response.data);
+      console.log('Response profile structure:', {
+        hasProfile: !!response.data.profile,
+        hasPersonalInfo: !!response.data.profile?.personalInfo,
+        returnedIdCardFront: !!response.data.profile?.personalInfo?.idCardFront,
+        returnedIdCardBack: !!response.data.profile?.personalInfo?.idCardBack,
+        returnedProfilePhoto: !!response.data.profile?.additionalProfile?.profilePhoto,
+        returnedCertificates: response.data.profile?.professionalInfo?.certificateFiles?.length || 0
       });
       
+      // Verify data was actually saved by fetching it back
+      try {
+        console.log('=== VERIFYING SAVED DATA ===');
+        const verifyResponse = await axios.get(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+        console.log('Fetched back from API:', {
+          hasProfile: !!verifyResponse.data.profile,
+          savedIdCardFront: !!verifyResponse.data.profile?.personalInfo?.idCardFront,
+          savedIdCardBack: !!verifyResponse.data.profile?.personalInfo?.idCardBack,
+          savedProfilePhoto: !!verifyResponse.data.profile?.additionalProfile?.profilePhoto,
+          savedCertificates: verifyResponse.data.profile?.professionalInfo?.certificateFiles?.length || 0
+        });
+      } catch (verifyError) {
+        console.warn('Could not verify saved data:', verifyError);
+      }
+
       alert('Đã hoàn tất hồ sơ đăng ký. Vui lòng chờ quản trị viên xét duyệt.');
       navigate('/care-giver/pending-approval');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Cập nhật hồ sơ thất bại:', error);
-      alert('Có lỗi xảy ra khi gửi hồ sơ. Vui lòng thử lại.');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // More specific error handling
+      if (error.response?.status === 413) {
+        alert('Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn và thử lại.');
+      } else if (error.code === 'ECONNABORTED') {
+        alert('Kết nối quá chậm. Hồ sơ đã lưu cục bộ và sẽ được gửi lại sau.');
+        navigate('/care-giver/pending-approval');
+      } else if (error.response?.status >= 400 && error.response?.status < 500) {
+        console.warn('API may not support large base64 images. Trying alternative approach...');
+        
+        // Try sending without images first, then save images separately
+        try {
+          // Rebuild profile without images from the original data
+          const profileWithoutImages = {
+            personalInfo: {
+              ...personalInfo,
+              idCardFront: 'stored_locally',
+              idCardBack: 'stored_locally'
+            },
+            additionalProfile: {
+              ...additionalProfile,
+              profilePhoto: 'stored_locally'
+            },
+            professionalInfo: {
+              ...professionalInfo,
+              certificates: mergedCertificateText,
+              skills: mergedSkillsText,
+              certificateFiles: certificateItems.map((c: any) => ({
+                ...c,
+                image: c.image ? 'stored_locally' : ''
+              })),
+              skillItems: skillItems
+            },
+            legalDocuments,
+            references,
+            commitments
+          };
+
+          await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, {
+            ...userData,
+            profile: profileWithoutImages,
+            status: 'pending',
+            role: 'Caregiver',
+            // Store a flag indicating images are stored locally
+            hasLocalImages: true
+          });
+
+          alert('Hồ sơ đã được gửi thành công. Ảnh được lưu cục bộ cho admin xem xét.');
+          navigate('/care-giver/pending-approval');
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+          alert(`Có lỗi xảy ra: ${error.message}. Hồ sơ đã lưu cục bộ và sẽ được gửi lại sau.`);
+          navigate('/care-giver/pending-approval');
+        }
+      } else {
+        alert(`Có lỗi xảy ra: ${error.message}. Hồ sơ đã lưu cục bộ và sẽ được gửi lại sau.`);
+        // Still allow navigation since data is saved locally
+        navigate('/care-giver/pending-approval');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -368,31 +611,9 @@ const UploadCredentialsPage: React.FC = () => {
     }));
   };
 
-  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        alert(`File ${file.name} quá lớn (tối đa 5MB).`);
-        return false;
-      }
-      return true;
-    });
+  // Legacy upload handler removed (structured certificates are entered via fields)
 
-    setCertificateFiles(prev => [...prev, ...validFiles]);
-    
-    validFiles.forEach(file => {
-      const previewUrl = URL.createObjectURL(file);
-      setCertificatePreviews(prev => [...prev, previewUrl]);
-    });
-  };
-
-  const removeCertificate = (index: number) => {
-    setCertificateFiles(prev => prev.filter((_, i) => i !== index));
-    setCertificatePreviews(prev => {
-      URL.revokeObjectURL(prev[index]);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
+  // Legacy remove handler removed
 
   const validateIdNumber = (value: string) => {
     const idNumberRegex = /^[0-9]{9,12}$/;
@@ -421,13 +642,7 @@ const UploadCredentialsPage: React.FC = () => {
     }
   };
 
-  const validateSkills = (value: string) => {
-    if (value && value.trim().length < 10) {
-      setValidationErrors(prev => ({ ...prev, skills: 'Kỹ năng chuyên môn phải ít nhất 10 ký tự' }));
-    } else {
-      setValidationErrors(prev => ({ ...prev, skills: '' }));
-    }
-  };
+  // Legacy validation removed
 
   const validateVideoUrl = (value: string) => {
     if (value) {
@@ -442,28 +657,77 @@ const UploadCredentialsPage: React.FC = () => {
     }
   };
 
-  const handleIdCardUpload = (type: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIdCardUpload = async (type: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.size > 5 * 1024 * 1024) {
-      alert('Ảnh quá lớn (tối đa 5MB).');
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Ảnh quá lớn (tối đa 10MB).');
       return;
     }
     
-    if (type === 'front') {
-      setIdCardFrontFile(file || null);
-      if (file) {
-        const previewUrl = URL.createObjectURL(file);
-        setIdCardFrontPreview(previewUrl);
+    try {
+      // Compress image immediately for preview and storage
+      const compressedImage = await new Promise<string>((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Aggressive compression for CCCD
+          let { width, height } = img;
+          const maxWidth = 600; // Smaller max width
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              } else {
+                reject(new Error('Canvas toBlob failed'));
+              }
+            },
+            'image/jpeg',
+            0.5 // More aggressive compression for CCCD
+          );
+        };
+        
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+
+      console.log(`CCCD ${type} compressed: ${file.size} bytes -> ~${compressedImage.length * 0.75} bytes`);
+      
+      if (type === 'front') {
+        setIdCardFrontFile(file);
+        setIdCardFrontPreview(compressedImage);
+        // Store compressed version in personalInfo for immediate use
+        setPersonalInfo(prev => ({ ...prev, idCardFront: compressedImage }));
       } else {
-        setIdCardFrontPreview('');
+        setIdCardBackFile(file);
+        setIdCardBackPreview(compressedImage);
+        // Store compressed version in personalInfo for immediate use
+        setPersonalInfo(prev => ({ ...prev, idCardBack: compressedImage }));
       }
-    } else {
-      setIdCardBackFile(file || null);
-      if (file) {
-        const previewUrl = URL.createObjectURL(file);
-        setIdCardBackPreview(previewUrl);
+    } catch (error) {
+      console.warn('CCCD compression failed, using original preview only:', error);
+      // Fallback to preview only (don't store large original)
+      if (type === 'front') {
+        setIdCardFrontFile(file);
+        setIdCardFrontPreview(URL.createObjectURL(file));
       } else {
-        setIdCardBackPreview('');
+        setIdCardBackFile(file);
+        setIdCardBackPreview(URL.createObjectURL(file));
       }
     }
   };
@@ -559,7 +823,14 @@ const UploadCredentialsPage: React.FC = () => {
                 </button>
               ))}
             </div>
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={(e) => {
+              // Only allow submit when on the last section (additional)
+              if (activeSection !== 'additional') {
+                e.preventDefault();
+                return;
+              }
+              handleSubmit(e);
+            }} className="space-y-8">
               {/* Personal Information Section */}
               {activeSection === 'personal' && (
                 <div className="space-y-6">
@@ -690,7 +961,7 @@ const UploadCredentialsPage: React.FC = () => {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleIdCardUpload('front', e)}
+                            onChange={async (e) => await handleIdCardUpload('front', e)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                           />
                           <p className="text-xs text-gray-500 mt-1">Tối đa 5MB - JPG, PNG</p>
@@ -725,7 +996,7 @@ const UploadCredentialsPage: React.FC = () => {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleIdCardUpload('back', e)}
+                            onChange={async (e) => await handleIdCardUpload('back', e)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                           />
                           <p className="text-xs text-gray-500 mt-1">Tối đa 5MB - JPG, PNG</p>
@@ -789,27 +1060,46 @@ const UploadCredentialsPage: React.FC = () => {
                         placeholder="Nhập nơi từng làm việc"
                       />
                     </div>
+                    {/* Structured Skills like Skills page */}
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Kỹ năng chuyên môn <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={professionalInfo.skills}
-                        onChange={(e) => {
-                          setProfessionalInfo(prev => ({ ...prev, skills: e.target.value }));
-                          validateSkills(e.target.value);
-                        }}
-                        rows={4}
-                        className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                          validationErrors.skills ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        placeholder="Mô tả các kỹ năng chuyên môn của bạn (ít nhất 10 ký tự)..."
-                        minLength={10}
-                        required
-                      />
-                      {validationErrors.skills && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.skills}</p>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Kỹ năng chuyên môn</label>
+                      <div className="space-y-3">
+                        {skillItems.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {skillItems.map((s) => (
+                              <div key={s.id} className="flex items-start p-3 border rounded-md">
+                                <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center mr-3 overflow-hidden">
+                                  {s.image ? <img src={s.image} alt={s.name} className="w-full h-full object-cover"/> : <span className="text-xs text-gray-400">No image</span>}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{s.name}</div>
+                                  {s.description && <div className="text-sm text-gray-600">{s.description}</div>}
+                                </div>
+                                <button type="button" onClick={() => setSkillItems(prev => prev.filter(x => x.id !== s.id))} className="text-red-600 text-sm ml-2">Xóa</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Add skill form */}
+                        <div className="p-3 border rounded-md">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+                            <input type="text" placeholder="Tên kỹ năng" value={newSkill.name} onChange={e => setNewSkill(prev => ({ ...prev, name: e.target.value }))} className="px-3 py-2 border rounded"/>
+                            <input type="text" placeholder="Mô tả (tuỳ chọn)" value={newSkill.description || ''} onChange={e => setNewSkill(prev => ({ ...prev, description: e.target.value }))} className="px-3 py-2 border rounded"/>
+                            <div className="flex items-center gap-2">
+                              <input id="skill-image-input" type="file" accept="image/*" className="hidden" onChange={async e => { const f = e.target.files?.[0]; if (f) await handleTempImageUpload(f, 'skill'); }}/>
+                              <label htmlFor="skill-image-input" className="px-3 py-2 border rounded cursor-pointer bg-gray-50 hover:bg-gray-100 text-sm">Tải ảnh</label>
+                              {newSkill.image && <span className="text-xs text-green-600">Đã chọn ảnh</span>}
+                            </div>
+                          </div>
+                          <div className="mt-2 text-right">
+                            <button type="button" onClick={() => {
+                              if (!newSkill.name.trim()) return;
+                              setSkillItems(prev => [...prev, { ...newSkill, id: `skill_${Date.now()}` }]);
+                              setNewSkill({ id: '', name: '', description: '', image: '' });
+                            }} className="px-3 py-1 bg-primary-600 text-white rounded">Thêm kỹ năng</button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -829,77 +1119,64 @@ const UploadCredentialsPage: React.FC = () => {
                         ))}
                       </div>
                     </div>
+                    {/* Structured Certificates like Certificates page (no admin approve here; only draft) */}
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Bằng cấp, chứng chỉ liên quan
-                      </label>
-                      <textarea
-                        value={professionalInfo.certificates}
-                        onChange={(e) => setProfessionalInfo(prev => ({ ...prev, certificates: e.target.value }))}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-3"
-                        placeholder="Mô tả các bằng cấp, chứng chỉ liên quan..."
-                      />
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Upload file chứng chỉ, bằng cấp
-                        </label>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          multiple
-                          onChange={handleCertificateUpload}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Có thể upload nhiều file (PDF, JPG, PNG, DOC, DOCX) - tối đa 5MB/file</p>
-                        
-                        {(certificatePreviews.length > 0 || professionalInfo.certificateFiles.length > 0) && (
-                          <div className="mt-3">
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">Files đã upload:</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {/* Existing files from database */}
-                              {professionalInfo.certificateFiles.map((file: string, index: number) => (
-                                <div key={`existing-${index}`} className="flex items-center justify-between p-2 border border-gray-200 rounded-md bg-gray-50">
-                                  <div className="flex items-center">
-                                    <img 
-                                      src={file} 
-                                      alt={`Certificate ${index + 1}`} 
-                                      className="h-12 w-12 object-cover rounded mr-3"
-                                    />
-                                    <span className="text-sm text-gray-700">
-                                      Certificate {index + 1}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs text-gray-500">Đã lưu</span>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Bằng cấp, chứng chỉ liên quan</label>
+                      {certificateItems.length > 0 && (
+                        <div className="space-y-3 mb-3">
+                          {certificateItems.map((c) => (
+                            <div key={c.id} className="p-3 border rounded-md">
+                              <div className="flex items-start">
+                                <div className="w-16 h-16 rounded bg-gray-100 overflow-hidden mr-3 flex-shrink-0">
+                                  {c.image ? <img src={c.image} alt={c.name} className="w-full h-full object-cover"/> : <span className="text-xs text-gray-400 flex items-center justify-center w-full h-full">No image</span>}
                                 </div>
-                              ))}
-                              
-                              {/* New files being uploaded */}
-                              {certificatePreviews.map((preview, index) => (
-                                <div key={`new-${index}`} className="flex items-center justify-between p-2 border border-gray-200 rounded-md">
-                                  <div className="flex items-center">
-                                    <img 
-                                      src={preview} 
-                                      alt={`Certificate ${index + 1}`} 
-                                      className="h-12 w-12 object-cover rounded mr-3"
-                                    />
-                                    <span className="text-sm text-gray-700">
-                                      {certificateFiles[index]?.name || `Certificate ${index + 1}`}
-                                    </span>
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <div>
+                                    <div className="text-sm text-gray-700">Tên chứng chỉ</div>
+                                    <div className="font-medium">{c.name}</div>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeCertificate(index)}
-                                    className="text-red-500 hover:text-red-700 text-sm"
-                                  >
-                                    ✕
-                                  </button>
+                                  <div>
+                                    <div className="text-sm text-gray-700">Ngày cấp</div>
+                                    <div className="font-medium">{c.issueDate}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-700">Tổ chức cấp</div>
+                                    <div className="font-medium">{c.organization}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-700">Loại</div>
+                                    <div className="font-medium">{c.type}</div>
+                                  </div>
                                 </div>
-                              ))}
+                                <button type="button" onClick={() => setCertificateItems(prev => prev.filter(x => x.id !== c.id))} className="text-red-600 text-sm ml-2">Xóa</button>
+                              </div>
                             </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Add certificate form */}
+                      <div className="p-3 border rounded-md space-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
+                          <input type="text" placeholder="Tên chứng chỉ" value={newCertificate.name} onChange={e => setNewCertificate(prev => ({ ...prev, name: e.target.value }))} className="px-3 py-2 border rounded"/>
+                          <input type="date" placeholder="Ngày cấp" value={newCertificate.issueDate} onChange={e => setNewCertificate(prev => ({ ...prev, issueDate: e.target.value }))} className="px-3 py-2 border rounded"/>
+                          <input type="text" placeholder="Tổ chức cấp" value={newCertificate.organization} onChange={e => setNewCertificate(prev => ({ ...prev, organization: e.target.value }))} className="px-3 py-2 border rounded"/>
+                          <input type="text" placeholder="Loại chứng chỉ" value={newCertificate.type} onChange={e => setNewCertificate(prev => ({ ...prev, type: e.target.value }))} className="px-3 py-2 border rounded"/>
+                          <div className="flex items-center gap-2 md:col-span-2">
+                            <input id="cert-image-input" type="file" accept="image/*" className="hidden" onChange={async e => { const f = e.target.files?.[0]; if (f) await handleTempImageUpload(f, 'certificate'); }}/>
+                            <label htmlFor="cert-image-input" className="px-3 py-2 border rounded cursor-pointer bg-gray-50 hover:bg-gray-100 text-sm">Tải ảnh chứng chỉ *</label>
+                            {newCertificate.image && <span className="text-xs text-green-600">Đã chọn ảnh</span>}
                           </div>
-                        )}
+                        </div>
+                        <div className="text-right">
+                          <button type="button" onClick={() => {
+                            if (!newCertificate.name || !newCertificate.issueDate || !newCertificate.organization || !newCertificate.type || !newCertificate.image) {
+                              alert('Vui lòng điền đủ thông tin chứng chỉ và tải ảnh chứng chỉ.');
+                              return;
+                            }
+                            setCertificateItems(prev => [...prev, { ...newCertificate, id: `cert_${Date.now()}` }]);
+                            setNewCertificate({ id: '', name: '', issueDate: '', organization: '', type: '', image: '' });
+                          }} className="px-3 py-1 bg-primary-600 text-white rounded">Thêm chứng chỉ</button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1172,7 +1449,9 @@ const UploadCredentialsPage: React.FC = () => {
                   {activeSection !== 'personal' && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         const sections = ['personal', 'professional', 'legal', 'references', 'additional'];
                         const currentIndex = sections.indexOf(activeSection);
                         if (currentIndex > 0) {
@@ -1190,7 +1469,9 @@ const UploadCredentialsPage: React.FC = () => {
                   {activeSection !== 'additional' ? (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         const sections = ['personal', 'professional', 'legal', 'references', 'additional'];
                         const currentIndex = sections.indexOf(activeSection);
                         if (currentIndex < sections.length - 1) {

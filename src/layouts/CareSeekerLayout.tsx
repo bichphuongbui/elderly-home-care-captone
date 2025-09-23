@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { FiHome, FiUser, FiHeart, FiUsers, FiCalendar, FiVideo, FiAlertTriangle, FiMenu, FiX, FiLogOut } from 'react-icons/fi';
-import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 
 interface CareSeekerLayoutProps {
@@ -17,7 +16,7 @@ const CareSeekerLayout: React.FC<CareSeekerLayoutProps> = ({ children }) => {
     { icon: FiHome, label: 'Dashboard', path: '/care-seeker' },
     { icon: FiUser, label: 'Hồ sơ nhu cầu', path: '/care-seeker/profile' },
     { icon: FiHeart, label: 'Hồ sơ sức khỏe', path: '/care-seeker/health' },
-    { icon: FiUsers, label: 'Ghép người chăm sóc', path: '/care-seeker/caregivers' },
+    { icon: FiUsers, label: 'Tìm người chăm sóc', path: '/care-seeker/caregivers' },
     { icon: FiCalendar, label: 'Lịch đặt hẹn', path: '/care-seeker/schedule' },
     { icon: FiVideo, label: 'Video tư vấn', path: '/care-seeker/video' },
     { icon: FiAlertTriangle, label: 'Cảnh báo khẩn cấp', path: '/care-seeker/emergency' },
