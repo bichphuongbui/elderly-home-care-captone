@@ -23,6 +23,7 @@ import UploadCredentialsPage from '../pages/caregiver/UploadCredentialsPage';
 import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
 import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
 import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
+import CertificateApprovalPage from '../pages/admin/CertificateApprovalPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
@@ -35,6 +36,7 @@ import BookingReportPage from '../pages/caregiver/BookingReportPage';
 import WithdrawPage from '../pages/caregiver/WithdrawPage';
 import SchedulePage from '../pages/caregiver/SchedulePage';
 import CaregiverCertificatesSkillsPage from '../pages/caregiver/CaregiverCertificatesSkillsPage';
+import ChatPage from '../pages/caregiver/ChatPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -337,6 +339,7 @@ const AppRoutes: React.FC = () => {
           <Route path="bookings" element={<BookingRequestPage />} />
           <Route path="bookings/:bookingId" element={<BookingDetailPage />} />
           <Route path="bookings/:bookingId/report" element={<BookingReportPage />} />
+          <Route path="chat" element={<ChatPage />} />
            <Route path="tasks" element={<div className="p-4">Theo dõi công việc</div>} />
            <Route path="payments" element={<div className="p-4">Rút tiền & thanh toán</div>} />
           <Route path="withdraw" element={<WithdrawPage />} />
@@ -361,6 +364,7 @@ const AppRoutes: React.FC = () => {
           <Route path="training" element={<AdminTrainingPage />} />
           <Route path="training/:courseId/files" element={<CourseFilesPage />} />
           <Route path="caregiver-approval" element={<CaregiverApprovalPage />} />
+          <Route path="certificate-approval" element={<CertificateApprovalPage />} />
           <Route path="caregivers/:id" element={<CaregiverDetailPage />} />
           <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />

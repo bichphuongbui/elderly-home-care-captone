@@ -1,64 +1,30 @@
-Tạo giúp tôi một file React + TypeScript có tên là `CaregiverCertificatesSkillsPage.tsx`, sử dụng TailwindCSS, dành cho caregiver trong hệ thống chăm sóc người cao tuổi.
+Tạo file `ChatPage.tsx` trong `pages/caregiver/` để hiển thị giao diện chat giữa Caregiver và Care Seeker.
 
-Đây là **trang quản lý chứng chỉ và kỹ năng** của caregiver, giúp caregiver xem và cập nhật chứng chỉ / kỹ năng chuyên môn của mình.
+Yêu cầu:
+1. Layout chia 2 phần:
+   - Sidebar bên trái (w-1/4): danh sách Care Seeker đang trò chuyện
+   - Chat box bên phải (w-3/4): hiển thị hội thoại với người được chọn
 
----
+2. Sidebar:
+   - Hiển thị tên Care Seeker
+   - Click vào Care Seeker → load messages của họ vào chat box
+   - Highlight Care Seeker đang chọn
 
-### 📑 Yêu cầu giao diện chính:
+3. Chat box:
+   - Header: tên Care Seeker
+   - Body: danh sách tin nhắn
+     + Tin nhắn Care Seeker align left, bg-gray-200
+     + Tin nhắn Caregiver align right, bg-blue-500 text-white
+   - Footer: input + nút gửi
+     + Nhập tin nhắn → thêm vào state messages
+     + Clear input sau khi gửi
 
-#### 1. Tiêu đề:
-- "Chứng chỉ và Kỹ năng của tôi"
+4. Mock data:
+   - Dùng mảng conversations như đã mô tả
+   - Lưu state cho selectedConversation
+   - Khi gửi tin mới → push vào messages của conversation hiện tại
 
-#### 2. Các thông tin hiển thị:
-- **Danh sách chứng chỉ**:
-  - Tên chứng chỉ
-  - Ngày cấp
-  - Tổ chức cấp chứng chỉ
-  - Thao tác: ✏️ Sửa | 🗑️ Xóa
-- **Danh sách kỹ năng**:
-  - Tên kỹ năng (VD: chăm sóc người bệnh, sơ cứu, dinh dưỡng...)
-  - Thao tác: ✏️ Sửa | 🗑️ Xóa
-- **Thêm chứng chỉ và kỹ năng**:
-  - 2 nút: “Thêm chứng chỉ” và “Thêm kỹ năng”
-
----
-
-### 🛠 Logic xử lý:
-1. Hiển thị danh sách **chứng chỉ** và **kỹ năng** hiện tại mà caregiver đã cập nhật từ hồ sơ
-   - Lấy dữ liệu từ `GET /users/:id` (hoặc mock data)
-   - **Chứng chỉ**: [Tên, Ngày cấp, Tổ chức cấp, Loại chứng chỉ]
-   - **Kỹ năng**: [Tên kỹ năng, Mô tả]
-2. Khi caregiver nhấn “Thêm chứng chỉ”:
-   - Hiển thị modal cho nhập thông tin chứng chỉ:
-     - Tên chứng chỉ
-     - Ngày cấp
-     - Tổ chức cấp chứng chỉ
-   - Khi nhấn "Lưu", gọi API `PUT /users/:id` để cập nhật chứng chỉ mới.
-3. Khi caregiver nhấn “Thêm kỹ năng”:
-   - Hiển thị modal cho nhập thông tin kỹ năng:
-     - Tên kỹ năng
-     - Mô tả (optional)
-   - Khi nhấn "Lưu", gọi API `PUT /users/:id` để cập nhật kỹ năng mới.
-4. Cập nhật / Xóa chứng chỉ và kỹ năng:
-   - Khi caregiver nhấn **"Sửa"**:
-     - Cập nhật thông tin chứng chỉ hoặc kỹ năng
-   - Khi caregiver nhấn **"Xóa"**:
-     - Cập nhật API để xóa chứng chỉ hoặc kỹ năng
-
----
-
-### UI yêu cầu:
-- Dùng **tailwind** để chia rõ danh sách chứng chỉ và kỹ năng
-- Cả hai danh sách **hiển thị trong table** hoặc **grid layout** (theo lựa chọn)
-- **Nút "Thêm" và "Sửa" dễ thấy** và dễ sử dụng
-- Các modal hiển thị rõ ràng, dễ nhập liệu
-- **Xử lý loading** khi thực hiện thao tác (thêm, sửa, xóa)
-- **Responsive** cho mobile và tablet
-
----
-
-### Kỹ thuật:
-- **API cần thiết**: `GET /users/:id` (lấy thông tin chứng chỉ, kỹ năng) và `PUT /users/:id` (thêm / sửa / xóa)
-- **React Hooks**: `useState`, `useEffect`
-- **Chức năng modal**: Hiển thị form nhập liệu chứng chỉ và kỹ năng
-- **React Router**: Nếu cần điều hướng sau khi thêm/chỉnh sửa
+5. UI:
+   - Dùng TailwindCSS
+   - Card bo góc, shadow nhẹ
+   - Responsive: trên mobile sidebar ẩn, chỉ hiển thị chat

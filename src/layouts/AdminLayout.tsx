@@ -55,6 +55,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         ),
       },
       {
+        label: "Duyệt chứng chỉ",
+        path: "/admin/certificate-approval",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+            <path d="M8.25 6.75h7.5m-7.5 3h7.5m-7.5 3h7.5M4.5 6.75h.008v.008H4.5V6.75Zm0 3h.008v.008H4.5v-.008Zm0 3h.008v.008H4.5v-.008ZM2.25 4.5A2.25 2.25 0 0 1 4.5 2.25h15a2.25 2.25 0 0 1 2.25 2.25v15A2.25 2.25 0 0 1 19.5 21.75h-15A2.25 2.25 0 0 1 2.25 19.5v-15Z" />
+          </svg>
+        ),
+      },
+      {
         label: "Phản hồi / Đánh giá",
         path: "/admin/feedback",
         icon: (

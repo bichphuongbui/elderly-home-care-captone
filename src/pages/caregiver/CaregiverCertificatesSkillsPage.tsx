@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { FiPlus, FiEdit, FiTrash2, FiAward, FiStar, FiX, FiSave, FiCalendar, FiUser, FiImage, FiUpload } from 'react-icons/fi';
 
 interface Certificate {
@@ -39,6 +40,8 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [rejectionNotice, setRejectionNotice] = useState<string>('');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Modal states
   const [showCertificateModal, setShowCertificateModal] = useState(false);
@@ -65,106 +68,121 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
   const [certificateImagePreview, setCertificateImagePreview] = useState<string>('');
   const [skillImagePreview, setSkillImagePreview] = useState<string>('');
 
-  // Mock data functions
-  const getMockCertificates = (): Certificate[] => [
-    
-    {
-      id: 2,
-      name: 'Chứng chỉ sơ cứu cơ bản',
-      issueDate: '2023-03-20',
-      organization: 'Hội Chữ thập đỏ Việt Nam',
-      type: 'Sơ cứu',
-      status: 'approved'
-    },
-    {
-      id: 3,
-      name: 'Chứng chỉ dinh dưỡng người bệnh',
-      issueDate: '2023-01-10',
-      organization: 'Đại học Y Dược TP.HCM',
-      type: 'Dinh dưỡng',
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=300&fit=crop',
-      status: 'approved'
+  // External image upload (imgbb) if API key is configured
+  const uploadImageIfPossible = async (dataUrl: string): Promise<string> => {
+    try {
+      const apiKey = (import.meta as any)?.env?.VITE_IMGBB_API_KEY as string | undefined;
+      if (!apiKey) return '';
+      const base64 = dataUrl.split(',')[1] || dataUrl;
+      const formData = new FormData();
+      formData.append('image', base64);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData
+      });
+      const json = await res.json();
+      if (json?.data?.display_url) return json.data.display_url as string;
+      return '';
+    } catch {
+      return '';
     }
-  ];
+  };
 
-  const getMockSkills = (): Skill[] => [
-    {
-      id: 1,
-      name: 'Chăm sóc người bệnh nằm liệt',
-      description: 'Có kinh nghiệm 3 năm chăm sóc bệnh nhân tai biến, đột quỵ',
-      image: 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=400&h=300&fit=crop'
-    },
-    {
-      id: 2,
-      name: 'Vật lý trị liệu cơ bản',
-      description: 'Hỗ trợ bài tập phục hồi chức năng cho người cao tuổi'
-    },
-    {
-      id: 3,
-      name: 'Tâm lý học người cao tuổi',
-      description: 'Hiểu và ứng xử phù hợp với tâm lý người cao tuổi',
-      image: 'https://images.unsplash.com/photo-1559757175-d1c5ee6ee04d?w=400&h=300&fit=crop'
-    },
-    {
-      id: 4,
-      name: 'Nấu ăn dinh dưỡng',
-      description: 'Chuẩn bị bữa ăn phù hợp với người cao tuổi và người bệnh'
-    }
-  ];
+  // Recompress a data URL to stricter target
+  const recompressDataUrl = async (dataUrl: string, maxWidth = 400, quality = 0.5): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img as HTMLImageElement;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
+  };
 
   // Load user data on component mount and hydrate from user profile if available
   useEffect(() => {
     const loadUserData = async () => {
       setLoading(true);
       try {
-        // Base data
-        let baseCertificates = getMockCertificates();
-        setSkills(getMockSkills());
-
-        // Try to read user profile certificateFiles for statuses
-        const storedUserStr = localStorage.getItem('current_user');
-        if (storedUserStr) {
-          const user = JSON.parse(storedUserStr);
-          setCurrentUser(user);
-          const files = user?.profile?.professionalInfo?.certificateFiles || [];
-          if (Array.isArray(files) && files.length > 0) {
-            // Map status back onto base certificates by index best-effort
-            const statuses = files.map((f: any) => ({
-              url: f.url,
-              status: (f.status || 'pending') as 'pending' | 'approved' | 'rejected',
-              adminNote: f.adminNote || ''
-            }));
-
-            // Merge by url if match, else append minimal entries
-            const merged: Certificate[] = [];
-            baseCertificates.forEach(c => {
-              const match = statuses.find((s: any) => c.image && s.url === c.image);
-              merged.push({ ...c, status: match?.status || c.status || 'approved', adminNote: match?.adminNote });
-            });
-            // Add any extra uploaded files not in base list as unnamed pending entries
-            statuses.forEach((s: any, idx: number) => {
-              const exists = merged.some(m => m.image && m.image === s.url);
-              if (!exists) {
-                merged.push({
-                  id: 100000 + idx,
-                  name: 'Chứng chỉ bổ sung',
-                  issueDate: new Date().toISOString().slice(0,10),
-                  organization: '—',
-                  type: 'Khác',
-                  image: s.url,
-                  status: s.status,
-                  adminNote: s.adminNote
-                });
-              }
-            });
-            baseCertificates = merged;
-          }
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          throw new Error('Không tìm thấy userId. Vui lòng đăng nhập lại.');
         }
-        setCertificates(baseCertificates);
+
+        const res = await axios.get(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+        const user = res.data;
+          setCurrentUser(user);
+
+        const prof = user?.profile?.professionalInfo || {};
+
+        // Skills: prefer structured skillItems, else parse free-text skills
+        const skillItems: any[] = Array.isArray((prof as any).skillItems) ? (prof as any).skillItems : [];
+        if (skillItems.length > 0) {
+          setSkills(
+            skillItems.map((s: any, idx: number) => ({
+              id: Number(s.id) || Date.now() + idx,
+              name: s.name || '',
+              description: s.description || '',
+              image: s.image || ''
+            }))
+          );
+        } else if (typeof prof.skills === 'string' && prof.skills.trim()) {
+          setSkills(
+            prof.skills
+              .split(/\n|,|;/)
+              .map((t: string) => t.trim())
+              .filter(Boolean)
+              .map((name: string, idx: number) => ({ id: Date.now() + idx, name }))
+          );
+        } else {
+          setSkills([]);
+        }
+
+        // Certificates: handle both legacy (url only) and new detailed entries
+        const certFiles: any[] = Array.isArray(prof.certificateFiles) ? (prof.certificateFiles as any[]) : [];
+        const normalizedCertificates: Certificate[] = certFiles.map((c: any, idx: number) => {
+          const image = c.image || c.url || '';
+          const status = (c.status || 'approved') as 'approved' | 'pending' | 'rejected';
+          // Backward-compatible field mapping
+          const mappedName = c.name || c.title || c.certificateName || c.certName || 'Chứng chỉ';
+          const mappedOrg = c.organization || c.org || c.issuer || c.organizationName || '—';
+          const mappedIssueDate = c.issueDate || c.issuedAt || c.date || new Date().toISOString().slice(0, 10);
+          const mappedType = c.type || c.category || 'Khác';
+          return {
+            id: Number(c.id) || Date.now() + idx,
+            name: mappedName,
+            issueDate: mappedIssueDate,
+            organization: mappedOrg,
+            type: mappedType,
+            image,
+            status,
+            adminNote: c.adminNote || ''
+          } as Certificate;
+        });
+        setCertificates(normalizedCertificates);
+
+        if (normalizedCertificates.some(c => c.status === 'pending')) {
+          setPendingNotice('Chứng chỉ của bạn đang chờ admin duyệt trước khi hiển thị.');
+        } else {
+          setPendingNotice('');
+        }
+
+        const rejectedCount = normalizedCertificates.filter(c => c.status === 'rejected').length;
+        setRejectionNotice(rejectedCount > 0 ? `Có ${rejectedCount} chứng chỉ bị từ chối. Vui lòng upload lại chứng chỉ mới.` : '');
       } catch (error) {
         console.error('Error loading user data:', error);
-        setCertificates(getMockCertificates());
-        setSkills(getMockSkills());
+        setCertificates([]);
+        setSkills([]);
       } finally {
         setLoading(false);
       }
@@ -173,17 +191,55 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
     loadUserData();
   }, []);
 
-  // Image handling functions
+  // Periodically refresh to reflect admin approval/rejection while user is on page
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+        const res = await axios.get(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+        const prof = res.data?.profile?.professionalInfo || {};
+        const certFiles: any[] = Array.isArray(prof.certificateFiles) ? (prof.certificateFiles as any[]) : [];
+        const normalizedCertificates: Certificate[] = certFiles.map((c: any, idx: number) => ({
+          id: Number(c.id) || Date.now() + idx,
+          name: c.name || c.title || c.certificateName || c.certName || 'Chứng chỉ',
+          issueDate: c.issueDate || c.issuedAt || c.date || new Date().toISOString().slice(0, 10),
+          organization: c.organization || c.org || c.issuer || c.organizationName || '—',
+          type: c.type || c.category || 'Khác',
+          image: c.image || c.url || '',
+          status: (c.status || 'approved') as any,
+          adminNote: c.adminNote || ''
+        }));
+        setCertificates(normalizedCertificates);
+        setPendingNotice(normalizedCertificates.some(c => c.status === 'pending') ? 'Chứng chỉ của bạn đang chờ admin duyệt trước khi hiển thị.' : '');
+        const rejectedCount = normalizedCertificates.filter(c => c.status === 'rejected').length;
+        setRejectionNotice(rejectedCount > 0 ? `Có ${rejectedCount} chứng chỉ bị từ chối. Vui lòng upload lại chứng chỉ mới.` : '');
+      } catch {}
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Image handling functions - robust reader-first approach with optional recompress
   const handleImageUpload = (file: File, type: 'certificate' | 'skill') => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageDataUrl = e.target?.result as string;
-      if (type === 'certificate') {
-        setCertificateImagePreview(imageDataUrl);
-        setCertificateForm(prev => ({ ...prev, image: imageDataUrl }));
-      } else {
-        setSkillImagePreview(imageDataUrl);
-        setSkillForm(prev => ({ ...prev, image: imageDataUrl }));
+    reader.onerror = () => alert('Không thể đọc file ảnh. Vui lòng thử lại với ảnh khác.');
+    reader.onload = async () => {
+      try {
+        const rawDataUrl = reader.result as string;
+        // Try to recompress to keep size reasonable
+        let dataUrl = rawDataUrl;
+        try {
+          dataUrl = await recompressDataUrl(rawDataUrl, 600, 0.6);
+        } catch {}
+        if (type === 'certificate') {
+          setCertificateImagePreview(dataUrl);
+          setCertificateForm(prev => ({ ...prev, image: dataUrl }));
+        } else {
+          setSkillImagePreview(dataUrl);
+          setSkillForm(prev => ({ ...prev, image: dataUrl }));
+        }
+      } catch (e) {
+        alert('Xử lý ảnh thất bại. Vui lòng thử lại.');
       }
     };
     reader.readAsDataURL(file);
@@ -240,66 +296,112 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
     }
     setLoading(true);
     try {
+      let nextCertificates: Certificate[] = [];
+      // Prefer external upload; else fallback to base64 with strict size cap
+      let hostedUrl = '';
+      if (certificateForm.image?.startsWith('data:')) {
+        hostedUrl = await uploadImageIfPossible(certificateForm.image);
+      }
+      let imageToStore = hostedUrl || certificateForm.image || '';
+      if (!hostedUrl) {
+        // Approx byte size from base64 length
+        const approxBytes = Math.floor((imageToStore.length * 3) / 4);
+        if (approxBytes > 160_000) {
+          // Recompress more aggressively to stay under MockAPI limits
+          imageToStore = await recompressDataUrl(imageToStore, 400, 0.5);
+        }
+        const finalBytes = Math.floor((imageToStore.length * 3) / 4);
+        if (finalBytes > 200_000) {
+          alert('Ảnh chứng chỉ vẫn quá lớn sau khi nén. Vui lòng chọn ảnh nhỏ hơn (≤ 200KB).');
+          return;
+        }
+      }
       if (editingCertificate) {
-        // Update existing certificate
-        const updatedCertificates = certificates.map(cert =>
+        nextCertificates = certificates.map(cert =>
           cert.id === editingCertificate.id
-            ? { ...cert, ...certificateForm, status: 'pending' as const }
+            ? { ...cert, ...certificateForm, image: imageToStore, status: 'pending' as const }
             : cert
         );
-        setCertificates(updatedCertificates);
       } else {
-        // Add new certificate
         const newCertificate: Certificate = {
           id: Date.now(),
           ...certificateForm,
+          image: imageToStore,
           status: 'pending'
         };
-        setCertificates([...certificates, newCertificate]);
+        nextCertificates = [...certificates, newCertificate];
       }
-      // Notify admin by updating user profile lightweight record
-      try {
-        const storedUserStr = localStorage.getItem('current_user');
-        if (storedUserStr) {
-          const user = JSON.parse(storedUserStr);
-          const files = Array.isArray(user?.profile?.professionalInfo?.certificateFiles)
-            ? user.profile.professionalInfo.certificateFiles
-            : [];
-          const pendingRecord = {
-            id: `cert_${Date.now()}`,
-            url: certificateForm.image,
-            status: 'pending',
-            uploadedAt: new Date().toISOString(),
-          };
-          const nextUser = {
-            ...user,
-            adminFlags: { ...(user.adminFlags || {}), certificateReviewPending: true },
-            profile: {
-              ...(user.profile || {}),
-              professionalInfo: {
-                ...((user.profile && user.profile.professionalInfo) || {}),
-                certificateFiles: [...files, pendingRecord]
-              }
+      setCertificates(nextCertificates);
+      // Show pending notice immediately
+      if (nextCertificates.some(c => c.status === 'pending')) {
+        setPendingNotice('Chứng chỉ của bạn đang chờ admin duyệt trước khi hiển thị.');
+      }
+
+      // Persist to API with minimal PATCH payload; fallback gracefully
+      const userId = currentUser?.id || localStorage.getItem('userId');
+      if (userId) {
+        const mergedCertificateFiles = nextCertificates.map((c) => ({
+          id: String(c.id),
+          name: c.name,
+          issueDate: c.issueDate,
+          organization: c.organization,
+          type: c.type,
+          url: c.image,
+          status: c.status || 'pending',
+          uploadedAt: new Date().toISOString(),
+          adminNote: c.adminNote || ''
+        }));
+
+        const minimalPayload = {
+          profile: {
+            professionalInfo: {
+              // Include both to avoid wiping skills on shallow merge backends
+              certificateFiles: mergedCertificateFiles,
+              skillItems: skills.map((s) => ({ id: String(s.id), name: s.name, description: s.description, image: s.image }))
             }
-          };
-          localStorage.setItem('current_user', JSON.stringify(nextUser));
-          setCurrentUser(nextUser);
-          setPendingNotice('Chứng chỉ của bạn đang chờ admin duyệt trước khi hiển thị.');
-          // Attempt PUT to mock API (best-effort)
+          }
+        } as any;
+
+        let saved = false;
+        try {
+          const res = await axios.patch(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, minimalPayload, { headers: { 'Content-Type': 'application/json' } });
+          setCurrentUser(res.data);
+          saved = true;
+        } catch {}
+
+        if (!saved) {
           try {
-            await fetch(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${user.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(nextUser)
-            });
+            const res2 = await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, minimalPayload, { headers: { 'Content-Type': 'application/json' } });
+            setCurrentUser(res2.data);
+            saved = true;
           } catch {}
         }
-      } catch {}
-      closeCertificateModal();
+
+        if (!saved) {
+          try {
+            const key = `pending_certificate_files_${userId}`;
+            localStorage.setItem(key, JSON.stringify(mergedCertificateFiles));
+            // Soft notice via state
+            setPendingNotice('Mạng không ổn định. Đã lưu cục bộ chứng chỉ và sẽ tự đồng bộ khi mạng ổn định.');
+            saved = true;
+          } catch (e: any) {
+            console.error('Save certificate failed (offline fallback):', e);
+            alert(`Không thể lưu chứng chỉ: ${e?.response?.status || e?.message || 'Network Error'}`);
+          }
+        }
+
+        // Verify by fetching latest from API and updating local when possible
+        try {
+          const verify = await axios.get(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`);
+          setCurrentUser(verify.data);
+        } catch {}
+      }
     } catch (error) {
       console.error('Error saving certificate:', error);
     } finally {
       setLoading(false);
+      // Always close modal even if API fails (optimistic UI)
+      closeCertificateModal();
     }
   };
 
@@ -309,6 +411,34 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
       try {
         const updatedCertificates = certificates.filter(cert => cert.id !== id);
         setCertificates(updatedCertificates);
+
+        // Persist to API (ensure admin reads "url" field)
+        const userId = currentUser?.id || localStorage.getItem('userId');
+        if (userId) {
+          const payload = {
+            ...currentUser,
+            profile: {
+              ...(currentUser?.profile || {}),
+              professionalInfo: {
+                ...((currentUser?.profile && currentUser.profile.professionalInfo) || {}),
+                // Also include skills to avoid accidental deletion on replace writes
+                skillItems: skills.map((s) => ({ id: String(s.id), name: s.name, description: s.description, image: s.image })),
+                certificateFiles: updatedCertificates.map((c) => ({
+                  id: String(c.id),
+                  name: c.name,
+                  issueDate: c.issueDate,
+                  organization: c.organization,
+                  type: c.type,
+                  url: c.image,
+                  status: c.status || 'approved',
+                  uploadedAt: new Date().toISOString(),
+                }))
+              }
+            }
+          };
+          const res = await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, payload);
+          setCurrentUser(res.data);
+        }
       } catch (error) {
         console.error('Error deleting certificate:', error);
       } finally {
@@ -349,21 +479,37 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
   const saveSkill = async () => {
     setLoading(true);
     try {
+      let nextSkills: Skill[] = [];
       if (editingSkill) {
-        // Update existing skill
-        const updatedSkills = skills.map(skill =>
+        nextSkills = skills.map(skill =>
           skill.id === editingSkill.id
             ? { ...skill, ...skillForm }
             : skill
         );
-        setSkills(updatedSkills);
       } else {
-        // Add new skill
         const newSkill: Skill = {
           id: Date.now(),
           ...skillForm
         };
-        setSkills([...skills, newSkill]);
+        nextSkills = [...skills, newSkill];
+      }
+      setSkills(nextSkills);
+
+      // Persist to API as structured skillItems
+      const userId = currentUser?.id || localStorage.getItem('userId');
+      if (userId) {
+        const payload = {
+          ...currentUser,
+          profile: {
+            ...(currentUser?.profile || {}),
+            professionalInfo: {
+              ...((currentUser?.profile && currentUser.profile.professionalInfo) || {}),
+              skillItems: nextSkills.map((s) => ({ id: String(s.id), name: s.name, description: s.description, image: s.image }))
+            }
+          }
+        };
+        const res = await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, payload);
+        setCurrentUser(res.data);
       }
       closeSkillModal();
     } catch (error) {
@@ -379,6 +525,23 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
       try {
         const updatedSkills = skills.filter(skill => skill.id !== id);
         setSkills(updatedSkills);
+
+        // Persist to API as structured skillItems
+        const userId = currentUser?.id || localStorage.getItem('userId');
+        if (userId) {
+          const payload = {
+            ...currentUser,
+            profile: {
+              ...(currentUser?.profile || {}),
+              professionalInfo: {
+                ...((currentUser?.profile && currentUser.profile.professionalInfo) || {}),
+                skillItems: updatedSkills.map((s) => ({ id: String(s.id), name: s.name, description: s.description, image: s.image }))
+              }
+            }
+          };
+          const res = await axios.put(`https://68aed258b91dfcdd62ba657c.mockapi.io/users/${userId}`, payload);
+          setCurrentUser(res.data);
+        }
       } catch (error) {
         console.error('Error deleting skill:', error);
       } finally {
@@ -407,15 +570,45 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
       <div className="max-w-5xl mx-auto">
         {/* Header - align title style with other pages */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            Chứng chỉ & Kỹ năng
-          </h1>
-          <p className="text-gray-600">Quản lý chứng chỉ đã được duyệt. Chứng chỉ mới sẽ chờ admin xét duyệt.</p>
-          {pendingNotice && (
-            <div className="mt-3 p-3 rounded border border-yellow-200 bg-yellow-50 text-yellow-800 text-sm">
-              {pendingNotice}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                Chứng chỉ & Kỹ năng
+              </h1>
+              <p className="text-gray-600">Quản lý chứng chỉ đã được duyệt. Chứng chỉ mới sẽ chờ admin xét duyệt.</p>
             </div>
-          )}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(v => !v)}
+                className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                title="Thông báo chứng chỉ"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {(pendingNotice || rejectionNotice) && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold bg-red-600 text-white rounded-full">!
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <div className="p-3 border-b font-medium text-gray-800">Thông báo chứng chỉ</div>
+                  <div className="max-h-60 overflow-auto p-3 space-y-2">
+                    {!pendingNotice && !rejectionNotice && (
+                      <div className="text-sm text-gray-500">Không có thông báo</div>
+                    )}
+                    {pendingNotice && (
+                      <div className="p-2 rounded border border-yellow-200 bg-yellow-50 text-yellow-700 text-sm">{pendingNotice}</div>
+                    )}
+                    {rejectionNotice && (
+                      <div className="p-2 rounded border border-red-200 bg-red-50 text-red-700 text-sm">{rejectionNotice}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -428,7 +621,7 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">Chứng chỉ</h2>
-                  <p className="text-sm text-gray-500">{certificates.length} chứng chỉ</p>
+                  
                 </div>
               </div>
               <button
@@ -543,7 +736,7 @@ const CaregiverCertificatesSkillsPage: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">Kỹ năng</h2>
-                  <p className="text-sm text-gray-500">{skills.length} kỹ năng</p>
+               
                 </div>
               </div>
               <button
