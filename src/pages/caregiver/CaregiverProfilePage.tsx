@@ -39,6 +39,7 @@ interface CaregiverProfile {
     languages?: string[];
     certificates?: string;
     certificateFiles?: CertificateFile[] | string[]; // Support both formats during transition
+    skillItems?: { id: string; name: string; description?: string; image?: string }[]; // Structured skills
   };
   legalDocuments?: {
     criminalRecord?: string;
@@ -91,7 +92,8 @@ const CaregiverProfilePage: React.FC = () => {
     skills: '',
     languages: [],
     certificates: '',
-    certificateFiles: [] as CertificateFile[]
+    certificateFiles: [] as CertificateFile[],
+    skillItems: [] as { id: string; name: string; description?: string; image?: string }[]
   });
 
   const [legalDocuments, setLegalDocuments] = useState<Required<NonNullable<CaregiverProfile['legalDocuments']>>>({
@@ -132,21 +134,23 @@ const CaregiverProfilePage: React.FC = () => {
   const [certificatePreviews, setCertificatePreviews] = useState<CertificateFile[]>([]);
   const [pendingCertificates, setPendingCertificates] = useState<CertificateFile[]>([]);
   const [certificateNotifications, setCertificateNotifications] = useState<string[]>([]);
+  const [showBell, setShowBell] = useState(false);
 
   const languageOptions = useMemo(
     () => ['Tiếng Việt', 'Tiếng Anh', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Hàn', 'Tiếng Pháp', 'Tiếng Đức'],
     []
   );
 
-  // Parse free-text skills to display as chips (read-only)
+  // Parse and merge structured skillItems with free-text skills
   const parsedSkills = useMemo(() => {
     const raw = professionalInfo.skills || '';
-    return raw
+    const freeText = raw
       .split(/\n|,|;/)
       .map(s => s.trim())
-      .filter(Boolean)
-      .slice(0, 50);
-  }, [professionalInfo.skills]);
+      .filter(Boolean);
+    const structured = (professionalInfo.skillItems || []).map(s => s.name).filter(Boolean);
+    return [...structured, ...freeText].slice(0, 50);
+  }, [professionalInfo.skills, professionalInfo.skillItems]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -170,7 +174,8 @@ const CaregiverProfilePage: React.FC = () => {
           ...prev,
           ...profile.professionalInfo,
           yearsOfExperience: profile.professionalInfo?.yearsOfExperience ?? prev.yearsOfExperience,
-          languages: profile.professionalInfo?.languages || []
+          languages: profile.professionalInfo?.languages || [],
+          skillItems: (profile.professionalInfo as any)?.skillItems || []
         }));
         setLegalDocuments(prev => ({
           ...prev,
@@ -637,7 +642,56 @@ const CaregiverProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Hồ sơ chuyên môn của bạn</h1>
+      <div className="flex items-start justify-between mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Hồ sơ chuyên môn của bạn</h1>
+        <div className="relative">
+          <button
+            onClick={() => setShowBell(v => !v)}
+            className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            title="Thông báo chứng chỉ"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {certificateNotifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold bg-red-600 text-white rounded-full">{certificateNotifications.length}</span>
+            )}
+          </button>
+          {showBell && (
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+              <div className="p-3 border-b font-medium text-gray-800 flex items-center justify-between">
+                <span>Thông báo chứng chỉ</span>
+                {certificateNotifications.length > 0 && (
+                  <button onClick={clearAllNotifications} className="text-xs text-gray-500 hover:text-gray-700">Xóa tất cả</button>
+                )}
+              </div>
+              <div className="max-h-60 overflow-auto p-3 space-y-2">
+                {certificateNotifications.length === 0 && (
+                  <div className="text-sm text-gray-500">Không có thông báo</div>
+                )}
+                {certificateNotifications.map((n, i) => (
+                  <div key={i} className={`p-2 rounded border ${
+                    n.includes('từ chối')
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : n.includes('chờ admin') || n.includes('đang chờ')
+                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">{n}</span>
+                      <button onClick={() => clearNotification(i)} className="text-gray-400 hover:text-gray-600 ml-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Profile Photo Section */}
       <section className="bg-white rounded-lg shadow p-6 mb-6">
@@ -867,7 +921,7 @@ const CaregiverProfilePage: React.FC = () => {
           </div>
           <div className="md:col-span-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">Kỹ năng chuyên môn (chỉ hiển thị)</label>
+              <label className="block text-sm font-medium text-gray-700">Kỹ năng chuyên môn </label>
               <button
                 type="button"
                 onClick={() => navigate('/care-giver/certificates')}
@@ -913,7 +967,7 @@ const CaregiverProfilePage: React.FC = () => {
           </div>
           <div className="md:col-span-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">Bằng cấp / chứng chỉ liên quan (chỉ hiển thị)</label>
+              <label className="block text-sm font-medium text-gray-700">Bằng cấp / chứng chỉ liên quan</label>
               <button
                 type="button"
                 onClick={() => navigate('/care-giver/certificates')}
@@ -922,24 +976,13 @@ const CaregiverProfilePage: React.FC = () => {
                 Quản lý tại trang Chứng chỉ & Kỹ năng
               </button>
             </div>
-            <p className="mt-2 text-sm text-gray-600">Các chứng chỉ đã duyệt được hiển thị ở phần trên. Vui lòng thêm/sửa chứng chỉ tại trang Chứng chỉ & Kỹ năng.</p>
+            <p className="mt-2 text-sm text-gray-600">Các chứng chỉ đã duyệt được hiển thị bên dưới. Vui lòng thêm/sửa chứng chỉ tại trang Chứng chỉ & Kỹ năng.</p>
           </div>
           
           {/* Approved Certificates (read-only) */}
           <div className="md:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Chứng chỉ đã được duyệt (chỉ hiển thị)
-              </label>
-              <button
-                type="button"
-                onClick={() => navigate('/care-giver/certificates')}
-                className="text-sm text-blue-600 hover:text-blue-700 underline"
-              >
-                Xem chi tiết / Chỉnh sửa tại trang Chứng chỉ & Kỹ năng
-              </button>
-            </div>
-            
+              
+              
             {/* Approved Certificates */}
             {certificatePreviews.length > 0 && (
               <div className="mt-3">
@@ -1181,60 +1224,7 @@ const CaregiverProfilePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Certificate Notifications */}
-      {certificateNotifications.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Thông báo chứng chỉ</h3>
-            <button
-              onClick={clearAllNotifications}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
-            >
-              Xóa tất cả
-            </button>
-          </div>
-          <div className="space-y-2">
-            {certificateNotifications.map((notification, index) => (
-              <div key={index} className={`p-3 rounded border ${
-                notification.includes('từ chối') 
-                  ? 'bg-red-50 text-red-700 border-red-200' 
-                  : notification.includes('chờ admin') || notification.includes('đang chờ')
-                  ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                  : 'bg-blue-50 text-blue-700 border-blue-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    {notification.includes('từ chối') && (
-                      <svg className="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    )}
-                    {notification.includes('chờ admin') || notification.includes('đang chờ') && (
-                      <svg className="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )}
-                    {!notification.includes('từ chối') && !notification.includes('chờ admin') && !notification.includes('đang chờ') && (
-                      <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )}
-                    <span className="font-medium">{notification}</span>
-                  </div>
-                  <button
-                    onClick={() => clearNotification(index)}
-                    className="text-gray-400 hover:text-gray-600 ml-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Certificate Notifications - moved into bell dropdown */}
 
       {message && (
         <div className={`mb-4 p-3 rounded ${message.includes('thành công') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>

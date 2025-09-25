@@ -10,7 +10,8 @@ import {
   FiMenu, 
   FiX, 
   FiLogOut,
-  FiAward
+  FiAward,
+  FiMessageCircle
 } from 'react-icons/fi';
 import Footer from '../components/layout/Footer';
 
@@ -29,6 +30,7 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
     { icon: FiAward, label: 'Chứng chỉ & Kỹ năng', path: '/care-giver/certificates' },
     { icon: FiCalendar, label: 'Quản lý lịch làm việc', path: '/care-giver/schedule' },
     { icon: FiBookOpen, label: 'Quản lý yêu cầu đặt lịch', path: '/care-giver/bookings' },
+    { icon: FiMessageCircle, label: 'Trò chuyện', path: '/care-giver/chat' },
     { icon: FiDollarSign, label: 'Rút tiền & thanh toán', path: '/care-giver/withdraw' },
     { icon: FiFileText, label: 'Truy cập tài liệu đào tạo', path: '/care-giver/training' },
   ];
