@@ -28,7 +28,7 @@ const Pricing: React.FC = () => {
       description: 'Phổ biến cho theo dõi và hỗ trợ thường xuyên',
       features: [
         '4 giờ mỗi ngày · 30 ngày',
-        'Linh hoạt ca sáng/chiều',
+        'Linh hoạt lịch hẹn sáng/chiều',
         'Chi phí thực tế do hai bên thống nhất'
       ],
       popular: true,
@@ -41,7 +41,7 @@ const Pricing: React.FC = () => {
       description: 'Phù hợp chăm sóc chuyên sâu & theo dõi sát sao',
       features: [
         '8 giờ mỗi ngày · 30 ngày',
-        'Có thể chia 2 ca',
+        'Có thể chia 2 lịch hẹn',
         'Chi phí thực tế do hai bên thống nhất'
       ],
       popular: false,

@@ -580,7 +580,7 @@ const CaregiverDetailPage: React.FC = () => {
           </div>
 
           {/* Legal Documents */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          {/* <div className="bg-white shadow-sm rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Giấy tờ pháp lý & sức khỏe</h2>
             {caregiver.profile?.legalDocuments ? (
               <div className="space-y-4">
@@ -634,14 +634,14 @@ const CaregiverDetailPage: React.FC = () => {
             ) : (
               <p className="text-gray-500">Chưa cung cấp giấy tờ pháp lý</p>
             )}
-          </div>
+          </div> */}
 
           {/* References & Additional Info */}
           <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Tham chiếu & Thông tin bổ sung</h2>
+          
             <div className="space-y-4">
               {/* References */}
-              {caregiver.profile?.references && (
+              {/* {caregiver.profile?.references && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-800 mb-2">Người tham chiếu</h3>
                   <div className="space-y-2">
@@ -659,7 +659,7 @@ const CaregiverDetailPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Commitments */}
               {caregiver.profile?.commitments && (

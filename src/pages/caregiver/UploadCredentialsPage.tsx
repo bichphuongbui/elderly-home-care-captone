@@ -75,9 +75,14 @@ const UploadCredentialsPage: React.FC = () => {
     yearsOfExperience: 0,
     previousWorkplace: '',
     skills: '',
-    languages: [] as string[],
     certificates: '',
     certificateFiles: [] as string[],
+    // New fields
+    educationLevel: '', // 'trung-cap' | 'cao-dang' | 'dai-hoc' | 'sau-dai-hoc'
+    graduationStatus: '', // 'graduated' | 'not_graduated' (only for 'dai-hoc')
+    graduationCertificate: '', // base64 (optional, required if graduated & university)
+    expectedSalaryMin: '' as any, // number-like string to allow empty input
+    expectedSalaryMax: '' as any,
   });
 
   // Structured entries to align with Certificates & Skills page
@@ -181,7 +186,7 @@ const UploadCredentialsPage: React.FC = () => {
   const [additionalProfile, setAdditionalProfile] = useState({
     profilePhoto: '',
     introductionVideo: '',
-    specialAbilities: '',
+    introduction: '',
   });
 
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
@@ -216,7 +221,12 @@ const UploadCredentialsPage: React.FC = () => {
           setLegalDocuments(response.data.profile.legalDocuments || legalDocuments);
           setReferences(response.data.profile.references || references);
           setCommitments(response.data.profile.commitments || commitments);
-          setAdditionalProfile(response.data.profile.additionalProfile || additionalProfile);
+          // Map old specialAbilities -> introduction if present
+          const ap = response.data.profile.additionalProfile || additionalProfile;
+          setAdditionalProfile({
+            ...ap,
+            introduction: (ap as any).introduction ?? (ap as any).specialAbilities ?? ''
+          });
           
           // Load existing certificate files if any
           if (response.data.profile.professionalInfo?.certificateFiles) {
@@ -318,7 +328,28 @@ const UploadCredentialsPage: React.FC = () => {
       return;
     }
 
-    // Bỏ validate mô tả kỹ năng
+    // Validate expected salary range (required)
+    const minSalary = Number(professionalInfo.expectedSalaryMin);
+    const maxSalary = Number(professionalInfo.expectedSalaryMax);
+    if (!minSalary || !maxSalary || minSalary <= 0 || maxSalary <= 0) {
+      alert('Vui lòng nhập khoảng lương mong muốn (tối thiểu và tối đa).');
+      setActiveSection('professional');
+      return;
+    }
+    if (minSalary > maxSalary) {
+      alert('Khoảng lương không hợp lệ: mức tối thiểu lớn hơn mức tối đa.');
+      setActiveSection('professional');
+      return;
+    }
+
+    // Validate education (only if university and graduated)
+    if (professionalInfo.educationLevel === 'dai-hoc' && professionalInfo.graduationStatus === 'graduated') {
+      if (!professionalInfo.graduationCertificate) {
+        alert('Vui lòng tải lên bằng tốt nghiệp đại học.');
+        setActiveSection('professional');
+        return;
+      }
+    }
 
     // Validate reference information
     if (references.referenceName && (!references.referencePhone || !references.referenceRelation)) {
@@ -600,16 +631,7 @@ const UploadCredentialsPage: React.FC = () => {
     }
   };
 
-  const languageOptions = ['Tiếng Việt', 'Tiếng Anh', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Hàn', 'Tiếng Pháp', 'Tiếng Đức'];
-
-  const handleLanguageChange = (language: string) => {
-    setProfessionalInfo(prev => ({
-      ...prev,
-      languages: prev.languages.includes(language)
-        ? prev.languages.filter(l => l !== language)
-        : [...prev.languages, language]
-    }));
-  };
+  // Removed language options per requirements
 
   // Legacy upload handler removed (structured certificates are entered via fields)
 
@@ -805,8 +827,8 @@ const UploadCredentialsPage: React.FC = () => {
               {[
                 { id: 'personal', label: 'Thông tin cá nhân' },
                 { id: 'professional', label: 'Thông tin nghề nghiệp'},
-                { id: 'legal', label: 'Giấy tờ pháp lý' },
-                { id: 'references', label: 'Tham chiếu & Cam kết' },
+                // { id: 'legal', label: 'Giấy tờ pháp lý' },
+                { id: 'references', label: 'Cam kết' },
                 { id: 'additional', label: 'Hồ sơ bổ sung' }
               ].map((tab) => (
                 <button
@@ -1101,22 +1123,94 @@ const UploadCredentialsPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                    {/* Education */}
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Khả năng ngôn ngữ
-                      </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {languageOptions.map((language) => (
-                          <label key={language} className="flex items-center">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Học vấn</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <select
+                            value={professionalInfo.educationLevel}
+                            onChange={(e) => setProfessionalInfo(prev => ({ ...prev, educationLevel: e.target.value, graduationStatus: '', graduationCertificate: '' }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="">Chọn trình độ</option>
+                            <option value="trung-cap">Trung cấp</option>
+                            <option value="cao-dang">Cao đẳng</option>
+                            <option value="dai-hoc">Đại học</option>
+                            <option value="sau-dai-hoc">Sau đại học</option>
+                          </select>
+                        </div>
+                        {professionalInfo.educationLevel === 'dai-hoc' && (
+                          <div className="flex items-center gap-6">
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="radio"
+                                name="graduationStatus"
+                                value="graduated"
+                                checked={professionalInfo.graduationStatus === 'graduated'}
+                                onChange={(e) => setProfessionalInfo(prev => ({ ...prev, graduationStatus: e.target.value }))}
+                                className="mr-2"
+                              />
+                              Đã tốt nghiệp
+                            </label>
+                            <label className="flex items-center text-sm">
+                              <input
+                                type="radio"
+                                name="graduationStatus"
+                                value="not_graduated"
+                                checked={professionalInfo.graduationStatus === 'not_graduated'}
+                                onChange={(e) => setProfessionalInfo(prev => ({ ...prev, graduationStatus: e.target.value, graduationCertificate: '' }))}
+                                className="mr-2"
+                              />
+                              Chưa tốt nghiệp
+                            </label>
+                          </div>
+                        )}
+                        {(professionalInfo.educationLevel === 'dai-hoc' && professionalInfo.graduationStatus === 'graduated') && (
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Bằng tốt nghiệp đại học (bắt buộc)</label>
                             <input
-                              type="checkbox"
-                              checked={professionalInfo.languages.includes(language)}
-                              onChange={() => handleLanguageChange(language)}
-                              className="mr-2"
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setProfessionalInfo(prev => ({ ...prev, graduationCertificate: reader.result as string }));
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             />
-                            <span className="text-sm">{language}</span>
-                          </label>
-                        ))}
+                            <p className="text-xs text-gray-500 mt-1">Tùy chọn ở các trình độ khác; bắt buộc nếu đã tốt nghiệp đại học.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expected salary range */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Khoảng mức lương mong muốn (bắt buộc) - VNĐ/giờ</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="number"
+                          min="0"
+                          value={professionalInfo.expectedSalaryMin}
+                          onChange={(e) => setProfessionalInfo(prev => ({ ...prev, expectedSalaryMin: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Tối thiểu (VNĐ)"
+                          required
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={professionalInfo.expectedSalaryMax}
+                          onChange={(e) => setProfessionalInfo(prev => ({ ...prev, expectedSalaryMax: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Tối đa (VNĐ)"
+                          required
+                        />
                       </div>
                     </div>
                     {/* Structured Certificates like Certificates page (no admin approve here; only draft) */}
@@ -1184,7 +1278,7 @@ const UploadCredentialsPage: React.FC = () => {
               )}
 
               {/* Legal Documents Section */}
-              {activeSection === 'legal' && (
+              {/* {activeSection === 'legal' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-gray-900">Giấy tờ pháp lý & sức khỏe</h2>
                   <div className="space-y-4">
@@ -1270,14 +1364,14 @@ const UploadCredentialsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* References & Commitments Section */}
               {activeSection === 'references' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Tham chiếu & Cam kết</h2>
+                  
                   <div className="space-y-6">
-                    <div>
+                    {/* <div>
                       <h3 className="text-lg font-medium text-gray-800 mb-4">Người tham chiếu</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -1337,7 +1431,7 @@ const UploadCredentialsPage: React.FC = () => {
                           />
                         </div>
                       </div>
-                    </div>
+                    </div> */}
                     
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium text-gray-800">Cam kết</h3>
@@ -1429,14 +1523,14 @@ const UploadCredentialsPage: React.FC = () => {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Khả năng đặc biệt
+                        Giới thiệu
                       </label>
                       <textarea
-                        value={additionalProfile.specialAbilities}
-                        onChange={(e) => setAdditionalProfile(prev => ({ ...prev, specialAbilities: e.target.value }))}
+                        value={additionalProfile.introduction}
+                        onChange={(e) => setAdditionalProfile(prev => ({ ...prev, introduction: e.target.value }))}
                         rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="Mô tả các khả năng đặc biệt của bạn..."
+                        placeholder="Giới thiệu về bản thân, kinh nghiệm, điểm mạnh..."
                       />
                     </div>
                   </div>

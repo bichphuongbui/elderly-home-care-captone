@@ -77,8 +77,8 @@ const CareGiverDashboardPage: React.FC = () => {
     {
       id: 1,
       date: formatISODate(today),
-      start: '08:00',
-      end: '10:00',
+      start: '14:00',
+      end: '16:00',
       patientName: 'Bà Nguyễn Thị B',
       service: 'Chăm sóc cá nhân',
       status: 'upcoming',
@@ -87,8 +87,8 @@ const CareGiverDashboardPage: React.FC = () => {
     {
       id: 2,
       date: formatISODate(today),
-      start: '14:00',
-      end: '16:00',
+      start: '08:00',
+      end: '10:00',
       patientName: 'Ông Trần Văn C',
       service: 'Vận động trị liệu',
       status: 'in-progress',
@@ -153,22 +153,45 @@ const CareGiverDashboardPage: React.FC = () => {
     return scheduleEvents.filter(event => event.date === formatISODate(today));
   }, [scheduleEvents, today]);
 
+  // Task model aligned with BookingDetailPage
+  type TaskType = 'fixed' | 'flexible' | 'optional';
+  type CareTask = {
+    id: number;
+    type: TaskType;
+    name: string;
+    description?: string;
+    days?: string[];
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    completed: boolean;
+  };
+
   // State for active appointment and tasks
   const [activeAppointmentId, setActiveAppointmentId] = useState<number | null>(() => {
     const saved = localStorage.getItem('activeAppointmentId');
     return saved ? parseInt(saved) : null;
   });
   
-  const [appointmentTasks, setAppointmentTasks] = useState<{[key: number]: Array<{id: number, description: string, completed: boolean}>}>({});
+  const [appointmentTasks, setAppointmentTasks] = useState<{[key: number]: CareTask[]}>({});
 
   // Initialize appointment tasks only once on component mount
   useEffect(() => {
     const saved = localStorage.getItem('appointmentTasks');
-    let existingTasks: {[key: number]: Array<{id: number, description: string, completed: boolean}>} = {};
+    let existingTasks: {[key: number]: CareTask[]} = {};
     
     if (saved) {
       try {
-        existingTasks = JSON.parse(saved);
+        const raw = JSON.parse(saved);
+        // Migrate from old schema if needed (items without type/name)
+        const cleaned: {[key: number]: CareTask[]} = {};
+        Object.keys(raw || {}).forEach((k) => {
+          const arr = Array.isArray(raw[k]) ? raw[k] : [];
+          if (arr.length > 0 && typeof arr[0] === 'object' && 'type' in arr[0]) {
+            cleaned[Number(k)] = arr as CareTask[];
+          }
+        });
+        existingTasks = cleaned;
       } catch (e) {
         console.error('Error parsing appointment tasks:', e);
       }
@@ -185,12 +208,62 @@ const CareGiverDashboardPage: React.FC = () => {
       
       todayAppointments.forEach(appointment => {
         if (!newTasks[appointment.id]) {
+          // Default demo tasks grouped as booking detail style
+          const date = appointment.date;
           newTasks[appointment.id] = [
-            { id: 1, description: `Chuẩn bị dụng cụ cho ${appointment.service.toLowerCase()}`, completed: false },
-            { id: 2, description: `Kiểm tra tình trạng sức khỏe ${appointment.patientName}`, completed: false },
-            { id: 3, description: `Thực hiện ${appointment.service.toLowerCase()}`, completed: false },
-            { id: 4, description: `Ghi chép báo cáo cuộc hẹn`, completed: false },
-            { id: 5, description: `Liên hệ gia đình về tình hình`, completed: false }
+            {
+              id: 1,
+              type: 'fixed',
+              name: 'Uống thuốc huyết áp',
+              description: 'Nhắc và theo dõi uống thuốc theo chỉ định bác sĩ',
+              days: ['Thứ 7'],
+              date,
+              startTime: '09:00',
+              endTime: '09:10',
+              completed: false,
+            },
+            {
+              id: 2,
+              type: 'fixed',
+              name: 'Vận động nhẹ',
+              description: 'Hướng dẫn vận động khớp 15 phút',
+              days: ['Thứ 7'],
+              date,
+              startTime: '10:30',
+              endTime: '10:45',
+              completed: false,
+            },
+            {
+              id: 3,
+              type: 'flexible',
+              name: 'Trò chuyện',
+              description: 'Giao tiếp ấm áp, hỏi thăm tinh thần 15–20 phút',
+              days: ['Thứ 7'],
+              date,
+              startTime: '09:30',
+              endTime: '09:50',
+              completed: false,
+            },
+            {
+              id: 4,
+              type: 'flexible',
+              name: 'Dọn dẹp nhẹ',
+              description: 'Sắp xếp chăn gối, lau bàn, đổ rác',
+              days: ['Thứ 7'],
+              date,
+              startTime: '11:00',
+              endTime: '11:20',
+              completed: false,
+            },
+            {
+              id: 5,
+              type: 'optional',
+              name: 'Đọc sách',
+              description: 'Đọc báo/sách 10–15 phút nếu còn thời gian',
+              days: ['Thứ 7'],
+              date,
+              completed: false,
+            },
           ];
           hasNewTasks = true;
         }
@@ -222,6 +295,10 @@ const CareGiverDashboardPage: React.FC = () => {
       return;
     }
     setActiveAppointmentId(appointmentId);
+    // Map today's appointment to booking id for cross-page sync (demo uses BK002 for in-progress sample)
+    // In real app, appointment should have a bookingId field. We'll infer using patientName for mock.
+    const mapped = appointmentId === 2 ? 'BK002' : appointmentId === 1 ? 'BK001' : 'BK003';
+    localStorage.setItem('booking_active', mapped);
   };
 
   const toggleAppointmentTask = (appointmentId: number, taskId: number) => {
@@ -236,6 +313,8 @@ const CareGiverDashboardPage: React.FC = () => {
   const finishAppointment = () => {
     setActiveAppointmentId(null);
     // Keep the tasks data for future reference
+    // Clear shared booking flag
+    localStorage.removeItem('booking_active');
   };
 
   // Week view data
@@ -478,40 +557,156 @@ const CareGiverDashboardPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Tasks for active appointment */}
+                  {/* Tasks for active appointment - grouped like booking detail */}
                   {isActive && appointmentTasks[appointment.id] && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                        <FiCheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                        Nhiệm vụ cần thực hiện
-                      </h4>
-                      <div className="space-y-2">
-                        {appointmentTasks[appointment.id].map((task) => (
-                          <div key={task.id} className="flex items-center space-x-3 p-2 bg-white rounded border">
-                            <input
-                              type="checkbox"
-                              checked={task.completed}
-                              onChange={() => toggleAppointmentTask(appointment.id, task.id)}
-                              className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                            />
-                            <span className={`flex-1 text-sm ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                              {task.description}
-                            </span>
-                            {task.completed && (
-                              <FiCheckCircle className="h-4 w-4 text-green-600" />
+                      {(() => {
+                        const tasks = appointmentTasks[appointment.id];
+                        const groups: Record<TaskType, CareTask[]> = {
+                          fixed: tasks.filter(t => t.type === 'fixed'),
+                          flexible: tasks.filter(t => t.type === 'flexible'),
+                          optional: tasks.filter(t => t.type === 'optional'),
+                        };
+                        const meta: Record<TaskType, { title: string; bar: string }> = {
+                          fixed: { title: 'Nhiệm vụ cố định', bar: 'bg-blue-500' },
+                          flexible: { title: 'Nhiệm vụ linh hoạt', bar: 'bg-violet-500' },
+                          optional: { title: 'Nhiệm vụ tuỳ chọn', bar: 'bg-amber-500' },
+                        };
+
+                        const total = tasks.length || 1;
+                        const done = tasks.filter(t => t.completed).length;
+                        const percent = Math.round((done / total) * 100);
+
+                        return (
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                              <FiCheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                              Danh sách nhiệm vụ
+                            </h4>
+
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Hoàn thành: {done}/{total}</span>
+                              </div>
+                            </div>
+
+                            {(['fixed','flexible','optional'] as TaskType[]).map((key) => {
+                              const list = groups[key];
+                              if (list.length === 0) return null;
+                              const d = list.filter(t => t.completed).length;
+                              const per = Math.round((d / (list.length || 1)) * 100);
+                              return (
+                                <div key={key} className="mt-4">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold text-gray-900">{meta[key].title}</h5>
+                                  </div>
+                                    <div className="mt-2">
+                                      <div className="flex items-center justify-between text-xs text-gray-600">
+                                        <span>Hoàn thành: {d}/{list.length}</span>
+                                      </div>
+                                    </div>
+                                  <ul className="mt-3 space-y-2">
+                                    {list.map(task => (
+                                      <li key={task.id}>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleAppointmentTask(appointment.id, task.id)}
+                                          className={`w-full rounded-lg border px-3 py-2 text-left ${task.completed ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                                        >
+                                          <div className="w-full text-left">
+                                            <div className={`flex items-center justify-between ${task.completed ? 'text-emerald-700' : 'text-gray-800'}`}>
+                                              <span className="font-medium">{task.name}</span>
+                                              <span className={`text-xs ${task.completed ? 'text-emerald-700' : 'text-gray-400'}`}>{task.completed ? '✔' : ''}</span>
+                                            </div>
+                                            {(task.description || task.days || task.startTime || task.date) && (
+                                              <div className="mt-1 text-xs text-gray-600">
+                                                {task.description && <div className="leading-5">{task.description}</div>}
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                  {task.days && task.days.length > 0 && !task.date && (
+                                                    <span className="inline-flex items-center gap-1">
+                                                      <span className="text-gray-500">Ngày:</span>
+                                                      <span className="text-gray-700">{task.days.join(', ')}</span>
+                                                    </span>
+                                                  )}
+                                                  {/* Fixed: show weekday instead of date; keep time */}
+                                                  {task.type === 'fixed' && task.date && (
+                                                    <span className="inline-flex items-center gap-1">
+                                                      <span className="text-gray-500">Thứ:</span>
+                                                      <span className="text-gray-700">{(() => {
+                                                        const d = new Date(`${task.date}T00:00:00`);
+                                                        const day = d.getDay();
+                                                        return isNaN(d.getTime()) ? '' : (day === 0 ? 'Chủ nhật' : `Thứ ${day + 1}`);
+                                                      })()}</span>
+                                                    </span>
+                                                  )}
+                                                  {/* Flexible: only show weekday (no time) */}
+                                                  {task.type === 'flexible' && task.date && (
+                                                    <span className="inline-flex items-center gap-1">
+                                                      <span className="text-gray-500">Thứ:</span>
+                                                      <span className="text-gray-700">{(() => {
+                                                        const d = new Date(`${task.date}T00:00:00`);
+                                                        const day = d.getDay();
+                                                        return isNaN(d.getTime()) ? '' : (day === 0 ? 'Chủ nhật' : `Thứ ${day + 1}`);
+                                                      })()}</span>
+                                                    </span>
+                                                  )}
+                                                  {/* Optional: remove date and time completely */}
+                                                  {task.type !== 'optional' && task.type === 'fixed' && task.startTime && (
+                                                    <span className="inline-flex items-center gap-1">
+                                                      <span className="text-gray-500">Thời gian:</span>
+                                                      <span className="text-gray-700">{task.startTime}{task.endTime ? ` – ${task.endTime}` : ''}</span>
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+
+                            {/* Legacy fallback: if no groups detected but there are tasks, render a simple flat list */}
+                            {groups.fixed.length === 0 && groups.flexible.length === 0 && groups.optional.length === 0 && tasks.length > 0 && (
+                              <ul className="mt-3 space-y-2">
+                                {tasks.map(task => (
+                                  <li key={task.id}>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleAppointmentTask(appointment.id, task.id)}
+                                      className={`w-full rounded-lg border px-3 py-2 text-left ${task.completed ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                      <div className="w-full text-left">
+                                        <div className={`flex items-center justify-between ${task.completed ? 'text-emerald-700' : 'text-gray-800'}`}>
+                                          <span className="font-medium">{task.name || 'Nhiệm vụ'}</span>
+                                          <span className={`text-xs ${task.completed ? 'text-emerald-700' : 'text-gray-400'}`}>{task.completed ? '✔' : ''}</span>
+                                        </div>
+                                        {(task.description) && (
+                                          <div className="mt-1 text-xs text-gray-600">
+                                            <div className="leading-5">{task.description}</div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
                             )}
+
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                onClick={() => finishAppointment()}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                              >
+                                Hoàn thành cuộc hẹn
+                              </button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                      
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={() => finishAppointment()}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                          Hoàn thành cuộc hẹn
-                        </button>
-                      </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -557,6 +752,17 @@ const CareGiverDashboardPage: React.FC = () => {
               <div>
                 <p className="font-medium text-gray-900">Xem yêu cầu booking</p>
                 <p className="text-sm text-gray-600">Nhận lịch hẹn phù hợp</p>
+              </div>
+            </div>
+          </button>
+          <button onClick={() => navigate('/care-giver/availability')} className="p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-left transition-colors">
+            <div className="flex items-center">
+              <div className="p-2 bg-white rounded-lg mr-3">
+                <FiCalendar className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Thiết lập lịch rảnh</p>
+                <p className="text-sm text-gray-600">Cấu hình khung giờ rảnh trong tuần</p>
               </div>
             </div>
           </button>

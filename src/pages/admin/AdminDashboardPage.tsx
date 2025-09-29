@@ -109,10 +109,7 @@ type Activity = {
 };
 
 const mockActivities: Activity[] = [
-  { id: "a1", type: "user", description: "Tài khoản mới: Lưu Gia Huy", time: "5 phút trước" },
-  { id: "a2", type: "booking", description: "Đặt lịch mới #BK-2025-0875", time: "15 phút trước" },
   { id: "a3", type: "caregiver", description: "Yêu cầu duyệt hồ sơ caregiver: Vũ Thu Hà", time: "35 phút trước" },
-  { id: "a4", type: "system", description: "Backup hệ thống hoàn tất", time: "1 giờ trước" },
 ];
 
 const AdminDashboardPage: React.FC = () => {
@@ -132,7 +129,7 @@ const AdminDashboardPage: React.FC = () => {
           <div className="pointer-events-none absolute -left-10 -bottom-10 -z-10 h-40 w-40 rounded-full bg-emerald-100 opacity-60 blur-2xl" />
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard 
             label="Tổng số người dùng" 
             value={1280} 
@@ -146,13 +143,6 @@ const AdminDashboardPage: React.FC = () => {
             accent={"amber"}
            
             trend={{ value: "+3", direction: "up" }}
-          />
-          <StatCard 
-            label="Tổng lượt đặt dịch vụ" 
-            value={875} 
-            accent={"green"}
-            
-            trend={{ value: "+7%", direction: "up" }}
           />
           <StatCard 
             label="Phản hồi/đánh giá" 

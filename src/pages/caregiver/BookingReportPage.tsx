@@ -53,7 +53,7 @@ const BookingReportPage: React.FC = () => {
         exercise: true,
         companionship: true,
         specialTasks: 'Kiểm tra huyết áp định kỳ',
-        careLog: 'Ca diễn ra thuận lợi, bệnh nhân hợp tác tốt.',
+        careLog: 'Lịch hẹn diễn ra thuận lợi, bệnh nhân hợp tác tốt.',
         incident: '',
         suggestion: 'Duy trì chế độ ăn nhạt và vận động nhẹ mỗi ngày.',
       };
@@ -124,15 +124,15 @@ const BookingReportPage: React.FC = () => {
         <Link to={`/care-giver/bookings/${bookingId}`} className="text-blue-600 hover:underline">← Quay lại chi tiết</Link>
         <div className="mt-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
           <div className="px-6 py-5 border-b border-gray-100">
-            <h1 className="text-2xl font-bold text-gray-900">{isViewOnly ? 'Xem báo cáo' : 'Báo cáo kết thúc ca chăm sóc'}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{isViewOnly ? 'Xem báo cáo' : 'Báo cáo kết thúc lịch hẹn chăm sóc'}</h1>
             <p className="mt-1 text-sm text-gray-600">Mã đơn #{bookingId}</p>
           </div>
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Thông tin ca chăm sóc</h2>
+              <h2 className="text-base font-semibold text-gray-900">Thông tin lịch hẹn chăm sóc</h2>
               <div className="mt-3 grid sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <div className="text-gray-500">Mã ca (ID)</div>
+                  <div className="text-gray-500">Mã lịch hẹn (ID)</div>
                   <div className="font-medium text-gray-900">{header.bookingCode}</div>
                 </div>
                 <div>
@@ -140,7 +140,7 @@ const BookingReportPage: React.FC = () => {
                   <div className="font-medium text-gray-900">{header.careSeekerName}</div>
                 </div>
                 <div>
-                  <div className="text-gray-500">Ngày & giờ ca làm việc</div>
+                  <div className="text-gray-500">Ngày & giờ lịch hẹn</div>
                   <div className="font-medium text-gray-900">{header.startTime} – {header.endTime}</div>
                 </div>
                 <div>
@@ -243,7 +243,7 @@ const BookingReportPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-900">Nhật ký ca chăm sóc</label>
+              <label className="text-sm font-medium text-gray-900">Nhật ký lịch hẹn chăm sóc</label>
               <textarea value={careLog} onChange={(e) => setCareLog(e.target.value)} rows={5} className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ghi ngắn gọn những gì đã diễn ra" readOnly={isViewOnly} />
             </div>
 

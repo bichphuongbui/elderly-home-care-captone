@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FiPhone, FiInfo, FiPaperclip, FiSmile, FiSend, FiSearch, FiCircle } from 'react-icons/fi';
+import {FiPaperclip, FiSmile, FiSend, FiSearch} from 'react-icons/fi';
 
 interface Message {
   id: string;
@@ -48,7 +48,7 @@ const initialConversations: Conversation[] = [
     online: true,
     unreadCount: 0,
     messages: [
-      { id: 'm1', sender: 'care_seeker', text: 'Bạn có thể đi ca đêm không?', timestamp: '2025-09-21T21:00:00Z' },
+      { id: 'm1', sender: 'care_seeker', text: 'Bạn có thể nhận lịch hẹn ban đêm không?', timestamp: '2025-09-21T21:00:00Z' },
       { id: 'm2', sender: 'care_giver', text: 'Có thể nhé!', timestamp: '2025-09-21T21:10:00Z' },
     ],
   },
