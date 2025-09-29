@@ -18,6 +18,9 @@ import CareSeekerLayout from '../layouts/CareSeekerLayout';
 import CareGiverLayout from '../layouts/CareGiverLayout';
 import { User } from '../services/users.service';
 import CareSeekerDashboardPage from '../pages/careseeker/CareSeekerDashboardPage';
+import FamilyPage from '../pages/careseeker/FamilyPage';
+import HealthProfilePage from '../pages/careseeker/HealthProfilePage';
+import VideoConsultationPage from '../pages/careseeker/VideoConsultationPage';
 import CareGiverDashboardPage from '../pages/caregiver/CareGiverDashboardPage';
 import UploadCredentialsPage from '../pages/caregiver/UploadCredentialsPage';
 import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
@@ -324,12 +327,9 @@ const AppRoutes: React.FC = () => {
            }
          >
            <Route index element={<CareSeekerDashboardPage />} />
-           <Route path="profile" element={<div className="p-4">Hồ sơ nhu cầu</div>} />
-           <Route path="health" element={<div className="p-4">Hồ sơ sức khỏe</div>} />
-           <Route path="caregivers" element={<div className="p-4">Ghép người chăm sóc</div>} />
-           <Route path="schedule" element={<div className="p-4">Lịch đặt hẹn</div>} />
-           <Route path="video" element={<div className="p-4">Video tư vấn</div>} />
-           <Route path="emergency" element={<div className="p-4">Cảnh báo khẩn cấp</div>} />
+           <Route path="family" element={<FamilyPage />} />
+           <Route path="health" element={<HealthProfilePage />} />
+           <Route path="video" element={<VideoConsultationPage />} />
          </Route>
 
          {/* CareGiver routes với layout */}
