@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type BookingStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
@@ -26,7 +26,15 @@ const getStartOfWeek = (date: Date) => {
 const formatYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 const HOURS = Array.from({ length: 15 }).map((_, i) => 7 + i); // 7..21
+const DAY_START_HOUR = 7;
+const DAY_END_HOUR = 22; // exclusive
+const HOUR_PIXEL = 64; // px height per hour row
 const DAYS = ['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
+type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+type TimeRange = { start: string; end: string };
+type DailyAvailability = { enabled: boolean; ranges: TimeRange[] };
+type WeeklyAvailability = Record<DayKey, DailyAvailability>;
+const AVAIL_STORAGE_KEY = 'caregiver_availability_v1';
 
 const mockBookings: BookingItem[] = [
   { id: 'BK001', careSeekerName: 'Cụ Nguyễn Văn A', date: '2025-09-22', startTime: '09:00', endTime: '11:00', status: 'upcoming', location: 'Q.1, TP.HCM' },
@@ -45,6 +53,7 @@ const statusStyles: Record<BookingStatus, string> = {
 const SchedulePage: React.FC = () => {
   const navigate = useNavigate();
   const [current, setCurrent] = useState<Date>(getStartOfWeek(new Date()));
+  const [availability, setAvailability] = useState<WeeklyAvailability | null>(null);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
@@ -53,6 +62,14 @@ const SchedulePage: React.FC = () => {
       return d;
     });
   }, [current]);
+
+  // Load caregiver availability from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AVAIL_STORAGE_KEY);
+      if (saved) setAvailability(JSON.parse(saved));
+    } catch {}
+  }, []);
 
   const bookingsByDate = useMemo(() => {
     const map: Record<string, BookingItem[]> = {};
@@ -76,30 +93,9 @@ const SchedulePage: React.FC = () => {
     return `${fmt(start)} - ${fmt(end)}`;
   }, [weekDays]);
 
-  const renderCell = (date: Date, hour: number) => {
-    const key = formatYMD(date);
-    const list = bookingsByDate[key] || [];
-    const hh = pad(hour);
-    const within = list.filter(b => b.startTime.startsWith(hh));
-
-    if (within.length === 0) return null;
-
-    return (
-      <div className="space-y-2">
-        {within.map(b => (
-          <button
-            key={b.id}
-            onClick={() => navigate(`/care-giver/bookings/${b.id}`)}
-            title={`${b.careSeekerName} • ${b.startTime}-${b.endTime} • ${b.location}`}
-            className={`w-full text-left rounded-lg border px-2 py-1 text-xs ${statusStyles[b.status]} hover:opacity-90`}
-          >
-            <div className="font-semibold">{b.startTime} – {b.endTime}</div>
-            <div>{b.careSeekerName}</div>
-            <div className="truncate">{b.location}</div>
-          </button>
-        ))}
-      </div>
-    );
+  const timeToMinutes = (t: string) => {
+    const [h, m] = t.split(':').map((n) => parseInt(n, 10));
+    return h * 60 + (m || 0);
   };
 
   return (
@@ -111,34 +107,90 @@ const SchedulePage: React.FC = () => {
             <button onClick={() => goWeek(-1)} className="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">← Tuần trước</button>
             <div className="text-sm text-gray-700">{weekLabel}</div>
             <button onClick={() => goWeek(1)} className="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Tuần sau →</button>
+            <button onClick={() => navigate('/care-giver/availability')} className="ml-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700">Thiết lập lịch rảnh</button>
           </div>
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="w-16 sticky left-0 bg-gray-50 z-10 text-left text-xs font-semibold text-gray-600">Giờ</th>
-                {weekDays.map((d, idx) => (
-                  <th key={idx} className="px-2 py-2 text-xs font-semibold text-gray-600">
-                    {DAYS[idx]}<div className="text-gray-500">{pad(d.getDate())}/{pad(d.getMonth() + 1)}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {HOURS.map(h => (
-                <tr key={h} className="align-top">
-                  <td className="sticky left-0 bg-gray-50 z-10 px-2 py-2 text-xs text-gray-700">{pad(h)}:00</td>
-                  {weekDays.map((d, idx) => (
-                    <td key={idx} className="h-24 border border-gray-100 align-top p-2">
-                      {renderCell(d, h)}
-                    </td>
-                  ))}
-                </tr>
+          <div className="min-w-[900px]">
+            {/* Header row */}
+            <div className="grid" style={{ gridTemplateColumns: `64px repeat(7, minmax(0, 1fr))` }}>
+              <div className="text-left text-xs font-semibold text-gray-600">Giờ</div>
+              {weekDays.map((d, idx) => (
+                <div key={idx} className="px-2 py-2 text-xs font-semibold text-gray-600">
+                  {DAYS[idx]}
+                  <div className="text-gray-500">{pad(d.getDate())}/{pad(d.getMonth() + 1)}</div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Body grid: time gutter + 7 day columns */}
+            <div className="grid border-t border-gray-100" style={{ gridTemplateColumns: `64px repeat(7, minmax(0, 1fr))` }}>
+              {/* Time gutter */}
+              <div className="relative" style={{ height: (DAY_END_HOUR - DAY_START_HOUR) * HOUR_PIXEL }}>
+                {Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }).map((_, i) => (
+                  <div key={i} className="absolute left-0 right-0 border-t border-gray-100 text-[10px] text-gray-600" style={{ top: i * HOUR_PIXEL }}>
+                    <div className="-mt-2">{pad(DAY_START_HOUR + i)}:00</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Day columns */}
+              {weekDays.map((d, idx) => {
+                const key = formatYMD(d);
+                const list = bookingsByDate[key] || [];
+                const dayKey = (['mon','tue','wed','thu','fri','sat','sun'] as DayKey[])[idx];
+                const dayAvail = availability?.[dayKey];
+                return (
+                  <div key={idx} className="relative border-l border-gray-100 bg-white" style={{ height: (DAY_END_HOUR - DAY_START_HOUR) * HOUR_PIXEL }}>
+                    {/* Hour lines */}
+                    {Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }).map((_, i) => (
+                      <div key={i} className="absolute left-0 right-0 border-t border-gray-100" style={{ top: i * HOUR_PIXEL }} />
+                    ))}
+
+                    {/* Availability blocks */}
+                    {dayAvail?.enabled && dayAvail.ranges.map((r, i) => {
+                      const [sh, sm] = r.start.split(':').map((n) => parseInt(n, 10));
+                      const [eh, em] = r.end.split(':').map((n) => parseInt(n, 10));
+                      const startMin = sh * 60 + (sm || 0);
+                      const endMin = eh * 60 + (em || 0);
+                      const top = ((startMin - DAY_START_HOUR * 60) / 60) * HOUR_PIXEL;
+                      const height = Math.max(8, ((endMin - startMin) / 60) * HOUR_PIXEL);
+                      return (
+                        <div
+                          key={i}
+                          className="absolute left-1 right-1 rounded-md border border-dashed border-emerald-300 bg-emerald-50/50"
+                          style={{ top, height }}
+                          aria-hidden
+                        />
+                      );
+                    })}
+
+                    {/* Events */}
+                    {list.map((b) => {
+                      const startMin = timeToMinutes(b.startTime);
+                      const endMin = timeToMinutes(b.endTime);
+                      const top = ((startMin - DAY_START_HOUR * 60) / 60) * HOUR_PIXEL;
+                      const height = Math.max(24, ((endMin - startMin) / 60) * HOUR_PIXEL);
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => navigate(`/care-giver/bookings/${b.id}`)}
+                          title={`${b.careSeekerName} • ${b.startTime}-${b.endTime} • ${b.location}`}
+                          className={`absolute left-2 right-2 rounded-lg border px-2 py-2 text-xs ${statusStyles[b.status]} hover:opacity-90 shadow-sm`}
+                          style={{ top, height }}
+                        >
+                          <div className="font-semibold">{b.startTime} – {b.endTime}</div>
+                          <div>{b.careSeekerName}</div>
+                          <div className="truncate">{b.location}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

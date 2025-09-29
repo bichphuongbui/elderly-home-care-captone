@@ -24,6 +24,8 @@ import PendingApprovalPage from '../pages/caregiver/PendingApprovalPage';
 import CaregiverApprovalPage from '../pages/admin/CaregiverApprovalPage';
 import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
 import CertificateApprovalPage from '../pages/admin/CertificateApprovalPage';
+import AdminReviewManagementPage from '../pages/admin/AdminReviewManagementPage';
+import AdminDisputeManagementPage from '../pages/admin/AdminDisputeManagementPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
@@ -37,6 +39,15 @@ import WithdrawPage from '../pages/caregiver/WithdrawPage';
 import SchedulePage from '../pages/caregiver/SchedulePage';
 import CaregiverCertificatesSkillsPage from '../pages/caregiver/CaregiverCertificatesSkillsPage';
 import ChatPage from '../pages/caregiver/ChatPage';
+import AvailabilityPage from '../pages/caregiver/AvailabilityPage';
+import CaregiverReviewPage from '../pages/caregiver/CaregiverReviewPage';
+import VideoRequestPage from '../pages/caregiver/VideoRequestPage';
+import VideoCallPage from '../pages/caregiver/VideoCallPage';
+import CallFeedbackPage from '../pages/caregiver/CallFeedbackPage';
+import SystemFeedbackPage from '../pages/SystemFeedbackPage';
+import ComplaintPage from '../pages/caregiver/ComplaintPage';
+import ComplaintReviewPage from '../pages/caregiver/ComplaintReviewPage';
+import ServiceReviewEditorPage from '../pages/caregiver/ServiceReviewEditorPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -336,6 +347,7 @@ const AppRoutes: React.FC = () => {
           <Route path="profile" element={<CaregiverProfilePage />} />
           <Route path="certificates" element={<CaregiverCertificatesSkillsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
+          <Route path="availability" element={<AvailabilityPage />} />
           <Route path="bookings" element={<BookingRequestPage />} />
           <Route path="bookings/:bookingId" element={<BookingDetailPage />} />
           <Route path="bookings/:bookingId/report" element={<BookingReportPage />} />
@@ -346,6 +358,12 @@ const AppRoutes: React.FC = () => {
           <Route path="training" element={<CaregiverTrainingPage />} />
           <Route path="training/:id" element={<CourseDetailPage />} />
           <Route path="training/:id/lesson/:lessonId" element={<LessonViewerPage />} />
+          <Route path="reviews" element={<CaregiverReviewPage />} />
+          <Route path="video-requests" element={<VideoRequestPage />} />
+          <Route path="video-call" element={<VideoCallPage />} />
+          <Route path="complaint" element={<ComplaintPage />} />
+          <Route path="complaint-review" element={<ComplaintReviewPage />} />
+          <Route path="service-review" element={<ServiceReviewEditorPage />} />
          </Route>
         {/* Admin routes (nested under /admin) */}
         <Route 
@@ -366,10 +384,16 @@ const AppRoutes: React.FC = () => {
           <Route path="caregiver-approval" element={<CaregiverApprovalPage />} />
           <Route path="certificate-approval" element={<CertificateApprovalPage />} />
           <Route path="caregivers/:id" element={<CaregiverDetailPage />} />
-          <Route path="feedback" element={<div className="p-4">Khiếu nại / phản hồi</div>} />
+          <Route path="feedback" element={<AdminReviewManagementPage />} />
+          <Route path="disputes" element={<AdminDisputeManagementPage />} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
           <Route path="faq" element={<div className="p-4">FAQ</div>} />
         </Route>
+        {/* Caregiver call feedback */}
+        <Route 
+          path="/care-giver/call-feedback" 
+          element={<CallFeedbackPage />} 
+        />
 
         {/* Backward compatibility: old admin-dashboard path */}
         <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
@@ -406,6 +430,8 @@ const AppRoutes: React.FC = () => {
 
         {/* 404 route */}
         <Route path="*" element={<Navigate to="/" replace />} />
+        {/* System feedback page (public) */}
+        <Route path="/feedback/system" element={<SystemFeedbackPage />} />
       </Routes>
     </BrowserRouter>
   );

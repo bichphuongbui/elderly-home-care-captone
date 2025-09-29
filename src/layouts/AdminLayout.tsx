@@ -72,6 +72,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </svg>
         ),
       },
+      {
+        label: "Tranh chấp",
+        path: "/admin/disputes",
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+            <path d="M12 2.25 21.75 12 12 21.75 2.25 12 12 2.25Z" />
+          </svg>
+        ),
+      },
     ],
     []
   );

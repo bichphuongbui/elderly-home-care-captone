@@ -8,6 +8,17 @@ const WithdrawPage: React.FC = () => {
   const [withdrawnThisMonth] = useState<number>(500000);
   const [lastWithdrawDate] = useState<string>('2025-09-10');
 
+  // Mocked transactions
+  const receivedTransactions = useMemo(() => [
+    { id: 'TX1008', type: 'Thanh toán lịch hẹn', bookingId: 'BK003', date: '2025-09-16 13:30', amount: 480000 },
+    { id: 'TX1007', type: 'Thanh toán lịch hẹn', bookingId: 'BK002', date: '2025-09-15 17:45', amount: 330000 },
+    { id: 'TX1006', type: 'Rút tiền', date: '2025-09-10 09:10', amount: -500000 },
+  ], []);
+  const upcomingTransactions = useMemo(() => [
+    { id: 'TX1012', type: 'Thanh toán dự kiến', bookingId: 'BK007', date: '2025-09-22 18:00', amount: 360000 },
+    { id: 'TX1013', type: 'Thanh toán dự kiến', bookingId: 'BK008', date: '2025-09-23 14:30', amount: 440000 },
+  ], []);
+
   // Form state
   const [amount, setAmount] = useState<string>('');
   const [bankName, setBankName] = useState<string>('');
@@ -168,6 +179,75 @@ const WithdrawPage: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Transactions history */}
+        <div className="mt-10 grid gap-6">
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Giao dịch đã nhận</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Mã GD</th>
+                    <th className="px-3 py-2 text-left">Loại</th>
+                    <th className="px-3 py-2 text-left">Booking</th>
+                    <th className="px-3 py-2 text-left">Thời gian</th>
+                    <th className="px-3 py-2 text-right">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receivedTransactions.map((t) => (
+                    <tr key={t.id} className="border-t border-gray-100">
+                      <td className="px-3 py-2 text-gray-800">#{t.id}</td>
+                      <td className="px-3 py-2 text-gray-700">{t.type}</td>
+                      <td className="px-3 py-2 text-gray-700">{t.bookingId || '—'}</td>
+                      <td className="px-3 py-2 text-gray-600">{t.date}</td>
+                      <td className={`px-3 py-2 text-right font-medium ${t.amount < 0 ? 'text-red-600' : 'text-emerald-700'}`}>{t.amount < 0 ? '-' : ''}{formatCurrency(Math.abs(t.amount))}</td>
+                    </tr>
+                  ))}
+                  {receivedTransactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-6 text-center text-gray-500">Chưa có giao dịch.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Giao dịch sắp nhận</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Mã dự kiến</th>
+                    <th className="px-3 py-2 text-left">Loại</th>
+                    <th className="px-3 py-2 text-left">Booking</th>
+                    <th className="px-3 py-2 text-left">Thời gian dự kiến</th>
+                    <th className="px-3 py-2 text-right">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingTransactions.map((t) => (
+                    <tr key={t.id} className="border-t border-gray-100">
+                      <td className="px-3 py-2 text-gray-800">#{t.id}</td>
+                      <td className="px-3 py-2 text-gray-700">{t.type}</td>
+                      <td className="px-3 py-2 text-gray-700">{t.bookingId}</td>
+                      <td className="px-3 py-2 text-gray-600">{t.date}</td>
+                      <td className="px-3 py-2 text-right font-medium text-emerald-700">{formatCurrency(t.amount)}</td>
+                    </tr>
+                  ))}
+                  {upcomingTransactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-6 text-center text-gray-500">Không có giao dịch sắp tới.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

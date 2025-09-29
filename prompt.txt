@@ -1,30 +1,43 @@
-Tạo file `ChatPage.tsx` trong `pages/caregiver/` để hiển thị giao diện chat giữa Caregiver và Care Seeker.
+Tạo file `src/pages/SystemFeedbackPage.tsx` bằng React + TypeScript + TailwindCSS.
 
-Yêu cầu:
-1. Layout chia 2 phần:
-   - Sidebar bên trái (w-1/4): danh sách Care Seeker đang trò chuyện
-   - Chat box bên phải (w-3/4): hiển thị hội thoại với người được chọn
+🎯 Yêu cầu:
+1. Header:
+   - Tiêu đề: "Góp ý hệ thống"
+   - Subtitle: "Chia sẻ ý kiến để chúng tôi cải thiện trải nghiệm của bạn"
 
-2. Sidebar:
-   - Hiển thị tên Care Seeker
-   - Click vào Care Seeker → load messages của họ vào chat box
-   - Highlight Care Seeker đang chọn
+2. Form góp ý:
+   - Input text: Tiêu đề góp ý
+   - Dropdown: Loại góp ý
+     + Giao diện & Trải nghiệm (UI/UX)
+     + Tính năng mới
+     + Hiệu suất hệ thống
+     + Lỗi / Bug
+     + Khác
+   - Textarea: Nội dung chi tiết
+   - Upload file (optional): Cho phép upload hình ảnh hoặc file minh chứng (mock UI, chưa cần xử lý backend)
+   - Checkbox: "Ẩn danh" (nếu user không muốn lộ tên)
 
-3. Chat box:
-   - Header: tên Care Seeker
-   - Body: danh sách tin nhắn
-     + Tin nhắn Care Seeker align left, bg-gray-200
-     + Tin nhắn Caregiver align right, bg-blue-500 text-white
-   - Footer: input + nút gửi
-     + Nhập tin nhắn → thêm vào state messages
-     + Clear input sau khi gửi
+3. Action buttons:
+   - "Gửi góp ý" (màu xanh, primary)
+   - "Hủy" (secondary)
 
-4. Mock data:
-   - Dùng mảng conversations như đã mô tả
-   - Lưu state cho selectedConversation
-   - Khi gửi tin mới → push vào messages của conversation hiện tại
+4. State:
+   - useState để quản lý title, category, content, isAnonymous
+   - Khi bấm "Gửi góp ý":
+     + Validate các trường bắt buộc (tiêu đề, nội dung, category)
+     + Nếu hợp lệ → hiển thị toast/alert "Cảm ơn bạn đã gửi góp ý!"
+     + Reset form
 
-5. UI:
-   - Dùng TailwindCSS
-   - Card bo góc, shadow nhẹ
-   - Responsive: trên mobile sidebar ẩn, chỉ hiển thị chat
+5. UI yêu cầu:
+   - Card trắng, bo góc 2xl, shadow-md
+   - Form khoảng cách rộng rãi, dễ dùng cho người lớn tuổi
+   - Responsive mobile friendly
+   - Text rõ ràng, font-medium, label có dấu * cho trường bắt buộc
+
+6. Mock API:
+   - Gọi `feedback.service.tsx` trong folder `services`
+   - Trong đó có hàm `submitSystemFeedback(feedback: Feedback)` → console.log dữ liệu gửi
+   - Interface Feedback gồm: { title, category, content, isAnonymous, createdAt }
+
+7. Export default: `SystemFeedbackPage`
+thêm nút để vào trang ở layout
