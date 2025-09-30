@@ -106,8 +106,6 @@ const BookingRow: React.FC<{ b: Booking; onStatusChange: (id: string, newStatus:
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
             <span className="inline-flex items-center gap-1">🕒 <span>{b.startTime}</span></span>
             {b.endTime && <span className="inline-flex items-center gap-1">⏱ <span>{b.endTime}</span></span>}
-            <span className="inline-flex items-center gap-1">📦 <span>{b.hours} giờ</span></span>
-            {b.service && <span className="inline-flex items-center gap-1">🧩 <span>{b.service}</span></span>}
           </div>
           {b.type === 'scheduled' && b.videoRequest && b.videoStatus && (
             <div className="mt-2">

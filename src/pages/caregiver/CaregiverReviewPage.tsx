@@ -4,6 +4,12 @@ type ReviewCategory = 'Video' | 'Service' | 'System' | 'Complaint';
 type ReviewItem = {
   id: string;
   category: ReviewCategory;
+  // Related entity identifiers (optional depending on category)
+  videoId?: string;
+  serviceId?: string;
+  complaintId?: string;
+  // Appointment identifier for Video/Service/Complaint
+  appointmentId?: string;
   rating: number; // 1-5
   comment: string;
   createdByName: string;
@@ -28,13 +34,13 @@ const TAB_LABEL_VI: Record<ReviewCategory, string> = {
 
 const initialMock: ReviewItem[] = [
   // From Care Seeker
-  { id: 'R001', category: 'Video', rating: 5, comment: 'Video hướng dẫn rất chi tiết và dễ hiểu.', createdByName: 'Nguyễn Minh', createdByRole: 'Care Seeker', createdAt: '2025-09-15 13:00' },
-  { id: 'R002', category: 'Service', rating: 4, comment: 'Dịch vụ tốt, caregiver đúng giờ và tận tâm.', createdByName: 'Trần Thị B', createdByRole: 'Care Seeker', createdAt: '2025-09-16 10:20' },
+  { id: 'R001', category: 'Video', videoId: 'VID-1023', appointmentId: 'BK001', rating: 5, comment: 'Video hướng dẫn rất chi tiết và dễ hiểu.', createdByName: 'Nguyễn Minh', createdByRole: 'Care Seeker', createdAt: '2025-09-15 13:00' },
+  { id: 'R002', category: 'Service', serviceId: 'SRV-7761', appointmentId: 'BK002', rating: 4, comment: 'Dịch vụ tốt, caregiver đúng giờ và tận tâm.', createdByName: 'Trần Thị B', createdByRole: 'Care Seeker', createdAt: '2025-09-16 10:20' },
   { id: 'R003', category: 'System', rating: 3, comment: 'App thỉnh thoảng bị chậm khi tải lịch hẹn.', createdByName: 'Lê Văn C', createdByRole: 'Care Seeker', createdAt: '2025-09-17 08:45' },
-  { id: 'R004', category: 'Complaint', rating: 2, comment: 'Một số tính năng khó dùng, đề nghị cải thiện UX.', createdByName: 'Phạm Thu D', createdByRole: 'Care Seeker', createdAt: '2025-09-18 19:30' },
-  { id: 'R005', category: 'Service', rating: 5, comment: 'Rất hài lòng với sự nhiệt tình của caregiver.', createdByName: 'Bùi Gia E', createdByRole: 'Care Seeker', createdAt: '2025-09-19 11:05' },
+  { id: 'R004', category: 'Complaint', complaintId: 'CMP-3344', appointmentId: 'BK003', rating: 2, comment: 'Một số tính năng khó dùng, đề nghị cải thiện UX.', createdByName: 'Phạm Thu D', createdByRole: 'Care Seeker', createdAt: '2025-09-18 19:30' },
+  { id: 'R005', category: 'Service', serviceId: 'SRV-8890', appointmentId: 'BK004', rating: 5, comment: 'Rất hài lòng với sự nhiệt tình của caregiver.', createdByName: 'Bùi Gia E', createdByRole: 'Care Seeker', createdAt: '2025-09-19 11:05' },
   // My reviews (I rated service/system, etc.)
-  { id: 'R101', category: 'Service', rating: 4, comment: 'Phối hợp với gia đình thuận lợi, cần rõ thêm yêu cầu.', createdByName: 'Tôi (Caregiver)', createdByRole: 'Caregiver', createdAt: '2025-09-18 08:20' },
+  { id: 'R101', category: 'Service', serviceId: 'SRV-7761', appointmentId: 'BK002', rating: 4, comment: 'Phối hợp với gia đình thuận lợi, cần rõ thêm yêu cầu.', createdByName: 'Tôi (Caregiver)', createdByRole: 'Caregiver', createdAt: '2025-09-18 08:20' },
   { id: 'R102', category: 'System', rating: 3, comment: 'Muốn có tính năng xem lịch rảnh trực quan hơn.', createdByName: 'Tôi (Caregiver)', createdByRole: 'Caregiver', createdAt: '2025-09-20 17:45' },
 ];
 
@@ -143,6 +149,7 @@ const CaregiverReviewPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
               <tr>
+                {activeTab !== 'System' && (<th className="px-4 py-3 text-left">ID của lịch hẹn</th>)}
                 <th className="px-4 py-3 text-left">Rating</th>
                 <th className="px-4 py-3 text-left">Comment</th>
                 <th className="px-4 py-3 text-left">Ngày tạo</th>
@@ -152,6 +159,11 @@ const CaregiverReviewPage: React.FC = () => {
             <tbody>
               {filtered.filter(r => r.createdByRole === 'Caregiver').map((r) => (
                 <tr key={r.id} className="border-t border-gray-100">
+                  {activeTab !== 'System' && (
+                    <td className="px-4 py-3 text-gray-800">
+                      <span className="text-xs rounded bg-gray-50 text-gray-800 ring-1 ring-gray-200 px-2 py-1">{r.appointmentId ?? r.videoId ?? r.serviceId ?? r.complaintId ?? '—'}</span>
+                    </td>
+                  )}
                   <td className="px-4 py-3"><Stars value={r.rating} /></td>
                   <td className="px-4 py-3 text-gray-800 max-w-[480px] truncate" title={r.comment}>{r.comment}</td>
                   <td className="px-4 py-3 text-gray-600">{r.createdAt}</td>
@@ -162,7 +174,7 @@ const CaregiverReviewPage: React.FC = () => {
               ))}
               {filtered.filter(r => r.createdByRole === 'Caregiver').length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">Không có đánh giá.</td>
+                  <td colSpan={activeTab !== 'System' ? 5 : 4} className="px-4 py-6 text-center text-gray-500">Không có đánh giá.</td>
                 </tr>
               )}
             </tbody>
@@ -170,12 +182,14 @@ const CaregiverReviewPage: React.FC = () => {
         </div>
 
         {/* From Care Seeker (read-only) */}
+        {activeTab !== 'System' && (
         <div className="mt-6 rounded-xl bg-white shadow border border-gray-100 overflow-x-auto">
           <div className="px-4 py-3 border-b border-gray-100 font-semibold text-gray-900">Đánh giá từ Khách Hàng</div>
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
               <tr>
                 <th className="px-4 py-3 text-left">Category</th>
+                <th className="px-4 py-3 text-left">ID của lịch hẹn</th>
                 <th className="px-4 py-3 text-left">Rating</th>
                 <th className="px-4 py-3 text-left">Comment</th>
                 <th className="px-4 py-3 text-left">Người tạo</th>
@@ -188,6 +202,9 @@ const CaregiverReviewPage: React.FC = () => {
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs ring-1 ${CATEGORY_META[r.category].color}`}>{TAB_LABEL_VI[r.category]}</span>
                   </td>
+                  <td className="px-4 py-3 text-gray-800">
+                    <span className="text-xs rounded bg-gray-50 text-gray-800 ring-1 ring-gray-200 px-2 py-1">{r.appointmentId ?? r.videoId ?? r.serviceId ?? r.complaintId ?? '—'}</span>
+                  </td>
                   <td className="px-4 py-3"><Stars value={r.rating} /></td>
                   <td className="px-4 py-3 text-gray-800 max-w-[480px] truncate" title={r.comment}>{r.comment}</td>
                   <td className="px-4 py-3 text-gray-800">{r.createdByName}</td>
@@ -196,12 +213,13 @@ const CaregiverReviewPage: React.FC = () => {
               ))}
               {filtered.filter(r => r.createdByRole === 'Care Seeker').length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500">Không có đánh giá.</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-500">Không có đánh giá.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Modal */}
         {editing && (
@@ -219,6 +237,12 @@ const CaregiverReviewPage: React.FC = () => {
                       <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs ring-1 ${CATEGORY_META[editing.category].color}`}>{editing.category}</span>
                     </div>
                   </div>
+                  {editing.category !== 'System' && (
+                    <div>
+                      <div className="text-xs text-gray-500">ID của lịch hẹn</div>
+                      <div className="mt-1 text-sm text-gray-800">{editing.appointmentId ?? editing.videoId ?? editing.serviceId ?? editing.complaintId ?? '—'}</div>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500">Rating</label>
                     <select
