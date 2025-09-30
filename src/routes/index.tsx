@@ -13,6 +13,8 @@ import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import UserManagementPage from '../pages/admin/UserManagementPage';
 import AdminTrainingPage from '../pages/admin/AdminTrainingPage';
 import CourseFilesPage from '../pages/admin/CourseFilesPage';
+import CourseFormPage from '../pages/admin/CourseFormPage';
+import AdminCourseDetailPage from '../pages/admin/AdminCourseDetailPage';
 import AdminLayout from '../layouts/AdminLayout';
 import CareSeekerLayout from '../layouts/CareSeekerLayout';
 import CareGiverLayout from '../layouts/CareGiverLayout';
@@ -380,6 +382,9 @@ const AppRoutes: React.FC = () => {
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
           <Route path="training" element={<AdminTrainingPage />} />
+          <Route path="training/new" element={<CourseFormPage />} />
+          <Route path="training/:courseId" element={<AdminCourseDetailPage />} />
+          <Route path="training/:courseId/edit" element={<CourseFormPage />} />
           <Route path="training/:courseId/files" element={<CourseFilesPage />} />
           <Route path="caregiver-approval" element={<CaregiverApprovalPage />} />
           <Route path="certificate-approval" element={<CertificateApprovalPage />} />
