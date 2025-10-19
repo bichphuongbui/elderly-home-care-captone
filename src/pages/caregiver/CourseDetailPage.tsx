@@ -139,7 +139,7 @@ const CourseDetailPage: React.FC = () => {
                   type="button"
                   onClick={() => navigate(`/care-giver/training/${course.id}/lesson/${firstLessonId}`)}
                 >
-                  Bắt đầu học
+                  Vào bài học
                 </button>
               </div>
 

@@ -1,21 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-type BookingStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+type BookingStatus = 'pending' | 'waiting' | 'in_progress' | 'completed' | 'cancelled' | 'complaint';
 type BookingType = 'instant' | 'scheduled';
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
   pending: 'Chờ xác nhận',
+  waiting: 'Chờ thực hiện',
   in_progress: 'Đang thực hiện',
   completed: 'Đã hoàn thành',
   cancelled: 'Đã hủy',
+  complaint: 'Khiếu nại',
 };
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
   pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  waiting: 'bg-orange-50 text-orange-700 ring-orange-600/20',
   in_progress: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   cancelled: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+  complaint: 'bg-red-50 text-red-700 ring-red-600/20',
 };
 
 type TaskType = 'fixed' | 'flexible' | 'optional';
@@ -42,8 +46,8 @@ const getMockBookingById = (id: string) => {
         type: 'fixed',
         name: 'Uống thuốc huyết áp',
         description: 'Nhắc và theo dõi uống thuốc theo chỉ định bác sĩ',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: '09:00',
         endTime: '09:10',
         completed: true,
@@ -52,8 +56,8 @@ const getMockBookingById = (id: string) => {
         type: 'fixed',
         name: 'Vận động nhẹ',
         description: 'Hướng dẫn vận động khớp 15 phút',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: '10:30',
         endTime: '10:45',
         completed: false,
@@ -63,8 +67,8 @@ const getMockBookingById = (id: string) => {
         type: 'flexible',
         name: 'Trò chuyện',
         description: 'Giao tiếp ấm áp, hỏi thăm tinh thần 15–20 phút',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: '09:30',
         endTime: '09:50',
         completed: false,
@@ -73,8 +77,8 @@ const getMockBookingById = (id: string) => {
         type: 'flexible',
         name: 'Dọn dẹp nhẹ',
         description: 'Sắp xếp chăn gối, lau bàn, đổ rác',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: '11:00',
         endTime: '11:20',
         completed: false,
@@ -84,8 +88,8 @@ const getMockBookingById = (id: string) => {
         type: 'optional',
         name: 'Đọc sách',
         description: 'Đọc báo/sách 10–15 phút nếu còn thời gian',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: undefined,
         completed: false,
       },
@@ -93,8 +97,8 @@ const getMockBookingById = (id: string) => {
         type: 'optional',
         name: 'Chuẩn bị trái cây',
         description: 'Gọt trái cây nhẹ làm bữa phụ',
-        days: ['Thứ 7'],
-        date: '2025-09-20',
+        days: ['Thứ 2'],
+        date: '2025-10-21',
         startTime: '11:45',
         endTime: '12:00',
         completed: false,
@@ -140,7 +144,7 @@ const getMockBookingById = (id: string) => {
     service: {
       internalId: 'CASE-0001',
       serviceType: 'Chăm sóc tại nhà - theo giờ',
-      time: '2025-09-20 08:00 – 2025-09-20 12:00 (lịch hẹn cố định 8h–12h)',
+      time: '2025-10-21 08:00 – 2025-10-21 12:00 (lịch hẹn cố định 8h–12h)',
       location: 'Q.1, TP.HCM',
       primaryContact: { name: 'Nguyễn Minh', phone: '0901 234 567', email: 'minh@example.com' },
       familyNotes: 'Không ăn mặn, hạn chế ra ngoài buổi tối',
@@ -152,18 +156,18 @@ const getMockBookingById = (id: string) => {
         wagePerHour: 120000, // VND/h
       },
       workTime: {
-        dayNeeded: '2025-09-20',
+        dayNeeded: '2025-10-21',
         timeSlot: 'Sáng' as 'Sáng' | 'Chiều' | 'Tối' | 'Đêm' | 'Khác',
       },
       rentType: 'Theo ngày' as 'Ngắn ngày (<7 ngày)' | 'Dài ngày (>7 ngày)' | 'Theo giờ' | 'Không thời hạn',
       period: {
-        startDate: '2025-09-20',
-        endDate: '2025-09-20',
+        startDate: '2025-10-21',
+        endDate: '2025-10-21',
       },
     },
     // Thông tin dành cho đặt trước (scheduled)
     appointment: {
-      date: '2025-09-25',
+      date: '2025-10-27',
       startTime: '14:00',
       durationHours: 2,
       participants: ['Con gái (Lan)', 'Con rể (Hùng)'],
@@ -193,20 +197,24 @@ const getMockBookingById = (id: string) => {
     review?: { rated: boolean; rating?: number; comment?: string; date?: string };
     override?: Partial<typeof base>;
   }> = {
-    // Đặt ngay
-    BK001: { careseekerName: 'Cụ Nguyễn Văn A', startTime: '2025-09-20 08:00', address: 'Q.1, TP.HCM', status: 'pending', type: 'instant' },
-    BK002: { careseekerName: 'Bà Trần Thị B', startTime: '2025-09-19 14:00', address: 'Q.3, TP.HCM', status: 'in_progress', type: 'instant' },
-    BK003: { careseekerName: 'Ông Lê Văn C', startTime: '2025-09-15 09:00', address: 'Q.5, TP.HCM', status: 'completed', type: 'instant', reportSubmitted: true, review: { rated: true, rating: 5, comment: 'Caregiver rất tận tâm, đúng giờ và nhẹ nhàng.', date: '2025-09-15 13:00' } },
-    // Đặt trước
-    BK004: { careseekerName: 'Cụ Phạm Văn D', startTime: '2025-09-28 13:00', address: 'Q.7, TP.HCM', status: 'pending', type: 'scheduled', override: { tasks: [] } },
-    BK005: { careseekerName: 'Bà Nguyễn Thị E', startTime: '2025-09-29 07:30', address: 'Q.10, TP.HCM', status: 'pending', type: 'scheduled', override: { tasks: [] } },
-    BK006: { careseekerName: 'Cụ Võ Văn F', startTime: '2025-09-16 08:00', address: 'Q.2, TP.HCM', status: 'completed', type: 'scheduled', override: { tasks: [] }, reportSubmitted: false, review: { rated: false } },
-    // Thêm 2 lịch hẹn minh họa rõ ràng
-    BK007: { careseekerName: 'Cụ Hoàng Văn G', startTime: '2025-09-22 09:00', address: 'Q.4, TP.HCM', status: 'pending', type: 'instant' },
-    BK008: { careseekerName: 'Bà Lý Thị H', startTime: '2025-09-25 10:00', address: 'Q.6, TP.HCM', status: 'pending', type: 'scheduled', override: { tasks: [] } },
+    // Chờ xác nhận - ngày xa nhất (tương lai)
+    BK001: { careseekerName: 'Cụ Nguyễn Văn A', startTime: '2025-10-28 08:00', address: 'Q.1, TP.HCM', status: 'pending', type: 'instant' },
+    BK005: { careseekerName: 'Bà Nguyễn Thị E', startTime: '2025-10-21 07:30', address: 'Q.10, TP.HCM', status: 'pending', type: 'scheduled', override: { tasks: [] } },
+    // Chờ thực hiện - ngày gần (sắp tới)
+    BK007: { careseekerName: 'Cụ Hoàng Văn G', startTime: '2025-10-23 09:00', address: 'Q.4, TP.HCM', status: 'waiting', type: 'instant' },
+    BK008: { careseekerName: 'Bà Lý Thị H', startTime: '2025-10-24 10:00', address: 'Q.6, TP.HCM', status: 'waiting', type: 'scheduled', override: { tasks: [] } },
+    // Đang thực hiện - ngày hôm nay (21/10/2025)
+    BK002: { careseekerName: 'Bà Trần Thị B', startTime: '2025-10-21 14:00', address: 'Q.3, TP.HCM', status: 'in_progress', type: 'instant' },
+    // Hoàn thành - ngày quá khứ
+    BK003: { careseekerName: 'Ông Lê Văn C', startTime: '2025-10-18 09:00', address: 'Q.5, TP.HCM', status: 'completed', type: 'instant', reportSubmitted: true, review: { rated: true, rating: 5, comment: 'Caregiver rất tận tâm, đúng giờ và nhẹ nhàng.', date: '2025-10-18 13:00' } },
+    BK006: { careseekerName: 'Cụ Võ Văn F', startTime: '2025-10-16 08:00', address: 'Q.2, TP.HCM', status: 'completed', type: 'scheduled', override: { tasks: [] }, reportSubmitted: false, review: { rated: false } },
+    // Đã hủy - ngày quá khứ
+    BK004: { careseekerName: 'Cụ Phạm Văn D', startTime: '2025-10-17 13:00', address: 'Q.7, TP.HCM', status: 'cancelled', type: 'instant', override: { tasks: [] } },
+    // Khiếu nại - ngày quá khứ
+    BK009: { careseekerName: 'Ông Phan Văn I', startTime: '2025-10-15 08:00', address: 'Q.8, TP.HCM', status: 'complaint', type: 'instant' },
   };
 
-  const v = byId[id] ?? { careseekerName: 'Careseeker', startTime: '2025-09-20 08:00', address: '—', status: 'pending' as BookingStatus, type: 'instant' as BookingType };
+  const v = byId[id] ?? { careseekerName: 'Careseeker', startTime: '2025-10-28 08:00', address: '—', status: 'pending' as BookingStatus, type: 'instant' as BookingType };
   const merged = { id, ...base, ...v, ...(v.override || {}) } as { id: string } & typeof base & typeof v;
   return merged;
 };
@@ -238,7 +246,7 @@ const BookingDetailPage: React.FC = () => {
   };
 
   const parseBookingTimeRange = (serviceTime: string) => {
-    // Expect format like: '2025-09-20 08:00 – 2025-09-20 12:00 (...)'
+    // Expect format like: '2025-10-21 08:00 – 2025-10-21 12:00 (...)'
     const match = serviceTime.match(/(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2})\s*[–-]\s*(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2})/);
     if (!match) return { start: undefined as Date | undefined, end: undefined as Date | undefined };
     const [, d1, t1, d2, t2] = match;
@@ -537,7 +545,7 @@ const BookingDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-xs text-gray-500">Ngày cần chăm sóc</div>
-                    <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).jobInfo.workTime.dayNeeded).toLocaleDateString('vi-VN')}</div>
+                    <div className="mt-1 font-medium text-gray-900">{new Date(booking.startTime.split(' ')[0]).toLocaleDateString('vi-VN')}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500">Khung thời gian</div>
@@ -547,7 +555,7 @@ const BookingDetailPage: React.FC = () => {
                     <div className="text-xs text-gray-500">Thời gian thuê</div>
                     <div className="mt-1 font-medium text-gray-900">{(booking as any).jobInfo.rentType}</div>
                   </div>
-                  <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <div className="text-xs text-gray-500">Ngày bắt đầu</div>
                       <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).jobInfo.period.startDate).toLocaleDateString('vi-VN')}</div>
@@ -556,7 +564,7 @@ const BookingDetailPage: React.FC = () => {
                       <div className="text-xs text-gray-500">Ngày kết thúc</div>
                       <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).jobInfo.period.endDate).toLocaleDateString('vi-VN')}</div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             ) : (

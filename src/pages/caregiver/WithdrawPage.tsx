@@ -2,6 +2,23 @@ import React, { useMemo, useState } from 'react';
 
 const formatCurrency = (amount: number) => amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 
+type TransactionStatus = 'completed' | 'confirmed' | 'awaiting_payment' | 'rejected';
+type WithdrawStatus = 'pending' | 'processing' | 'completed' | 'rejected';
+
+const STATUS_META: Record<TransactionStatus, { label: string; bgColor: string; textColor: string }> = {
+  completed: { label: 'Hoàn thành', bgColor: 'bg-emerald-100', textColor: 'text-emerald-700' },
+  confirmed: { label: 'Đã xác nhận', bgColor: 'bg-blue-100', textColor: 'text-blue-700' },
+  awaiting_payment: { label: 'Chờ thanh toán', bgColor: 'bg-amber-100', textColor: 'text-amber-700' },
+  rejected: { label: 'Từ chối', bgColor: 'bg-red-100', textColor: 'text-red-700' },
+};
+
+const WITHDRAW_STATUS_META: Record<WithdrawStatus, { label: string; bgColor: string; textColor: string }> = {
+  pending: { label: 'Chờ duyệt', bgColor: 'bg-amber-100', textColor: 'text-amber-700' },
+  processing: { label: 'Chuyển khoản', bgColor: 'bg-blue-100', textColor: 'text-blue-700' },
+  completed: { label: 'Hoàn thành', bgColor: 'bg-emerald-100', textColor: 'text-emerald-700' },
+  rejected: { label: 'Từ chối', bgColor: 'bg-red-100', textColor: 'text-red-700' },
+};
+
 const WithdrawPage: React.FC = () => {
   // Mocked finance data
   const [availableBalance] = useState<number>(2400000);
@@ -10,13 +27,29 @@ const WithdrawPage: React.FC = () => {
 
   // Mocked transactions
   const receivedTransactions = useMemo(() => [
-    { id: 'TX1008', type: 'Thanh toán lịch hẹn', bookingId: 'BK003', date: '2025-09-16 13:30', amount: 480000 },
-    { id: 'TX1007', type: 'Thanh toán lịch hẹn', bookingId: 'BK002', date: '2025-09-15 17:45', amount: 330000 },
-    { id: 'TX1006', type: 'Rút tiền', date: '2025-09-10 09:10', amount: -500000 },
+    { id: 'TX1008', type: 'Thanh toán lịch hẹn', bookingId: 'BK003', date: '2025-09-16 13:30', amount: 480000, status: 'completed' as TransactionStatus },
+    { id: 'TX1007', type: 'Thanh toán lịch hẹn', bookingId: 'BK002', date: '2025-09-15 17:45', amount: 330000, status: 'completed' as TransactionStatus },
   ], []);
+  
   const upcomingTransactions = useMemo(() => [
-    { id: 'TX1012', type: 'Thanh toán dự kiến', bookingId: 'BK007', date: '2025-09-22 18:00', amount: 360000 },
-    { id: 'TX1013', type: 'Thanh toán dự kiến', bookingId: 'BK008', date: '2025-09-23 14:30', amount: 440000 },
+    { id: 'TX1012', type: 'Thanh toán dự kiến', bookingId: 'BK007', date: '2025-10-25 18:00', amount: 360000, status: 'confirmed' as TransactionStatus },
+    { id: 'TX1013', type: 'Thanh toán dự kiến', bookingId: 'BK008', date: '2025-10-20 14:30', amount: 440000, status: 'awaiting_payment' as TransactionStatus },
+    { id: 'TX1014', type: 'Thanh toán dự kiến', bookingId: 'BK009', date: '2025-10-18 10:00', amount: 520000, status: 'completed' as TransactionStatus },
+  ], []);
+
+  // Mocked withdraw history
+  const withdrawHistory = useMemo(() => [
+    { 
+      id: 'WD001', 
+      amount: 500000, 
+      bankName: 'Vietcombank', 
+      accountNumber: '1234567890', 
+      requestDate: '2025-09-10 09:10', 
+      processDate: '2025-09-11 14:30',
+      completedDate: '2025-09-11 16:45',
+      status: 'completed' as WithdrawStatus,
+      note: 'Rút tiền tháng 9'
+    }
   ], []);
 
   // Form state
@@ -27,6 +60,10 @@ const WithdrawPage: React.FC = () => {
   const [note, setNote] = useState<string>('');
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
+
+  // Track which fields have been touched (blurred)
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Validation
   const minAmount = 100000;
@@ -45,8 +82,12 @@ const WithdrawPage: React.FC = () => {
 
   const isValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
 
+  // Only show errors for touched fields or after submit attempt
+  const shouldShowError = (field: string) => touched[field] || attemptedSubmit;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmit(true);
     if (!isValid) return;
     const payload = {
       amount: parsedAmount,
@@ -108,48 +149,52 @@ const WithdrawPage: React.FC = () => {
               min={0}
               step={10000}
               inputMode="numeric"
-              className={`mt-2 w-full rounded-lg border px-3 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount ? 'border-red-300' : 'border-gray-200'}`}
+              className={`mt-2 w-full rounded-lg border px-3 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount && shouldShowError('amount') ? 'border-red-300' : 'border-gray-200'}`}
               placeholder="Nhập số tiền (tối thiểu 100,000đ)"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onBlur={() => setTouched((prev) => ({ ...prev, amount: true }))}
             />
-            {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
+            {errors.amount && shouldShowError('amount') && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium text-gray-900">Ngân hàng</label>
               <input
-                className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bankName ? 'border-red-300' : 'border-gray-200'}`}
+                className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bankName && shouldShowError('bankName') ? 'border-red-300' : 'border-gray-200'}`}
                 placeholder="VD: Vietcombank, ACB, Techcombank..."
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, bankName: true }))}
               />
-              {errors.bankName && <p className="mt-1 text-sm text-red-600">{errors.bankName}</p>}
+              {errors.bankName && shouldShowError('bankName') && <p className="mt-1 text-sm text-red-600">{errors.bankName}</p>}
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-900">Số tài khoản ngân hàng</label>
               <input
-                className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountNumber ? 'border-red-300' : 'border-gray-200'}`}
+                className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountNumber && shouldShowError('accountNumber') ? 'border-red-300' : 'border-gray-200'}`}
                 placeholder="Nhập số tài khoản"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, accountNumber: true }))}
                 inputMode="numeric"
               />
-              {errors.accountNumber && <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>}
+              {errors.accountNumber && shouldShowError('accountNumber') && <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>}
             </div>
           </div>
 
           <div>
             <label className="text-sm font-medium text-gray-900">Chủ tài khoản</label>
             <input
-              className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountHolder ? 'border-red-300' : 'border-gray-200'}`}
+              className={`mt-2 w-full rounded-lg border px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.accountHolder && shouldShowError('accountHolder') ? 'border-red-300' : 'border-gray-200'}`}
               placeholder="Nhập tên chủ tài khoản"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
+              onBlur={() => setTouched((prev) => ({ ...prev, accountHolder: true }))}
             />
-            {errors.accountHolder && <p className="mt-1 text-sm text-red-600">{errors.accountHolder}</p>}
+            {errors.accountHolder && shouldShowError('accountHolder') && <p className="mt-1 text-sm text-red-600">{errors.accountHolder}</p>}
           </div>
 
           <div>
@@ -182,41 +227,10 @@ const WithdrawPage: React.FC = () => {
 
         {/* Transactions history */}
         <div className="mt-10 grid gap-6">
-          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Giao dịch đã nhận</h2>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Mã GD</th>
-                    <th className="px-3 py-2 text-left">Loại</th>
-                    <th className="px-3 py-2 text-left">Booking</th>
-                    <th className="px-3 py-2 text-left">Thời gian</th>
-                    <th className="px-3 py-2 text-right">Số tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receivedTransactions.map((t) => (
-                    <tr key={t.id} className="border-t border-gray-100">
-                      <td className="px-3 py-2 text-gray-800">#{t.id}</td>
-                      <td className="px-3 py-2 text-gray-700">{t.type}</td>
-                      <td className="px-3 py-2 text-gray-700">{t.bookingId || '—'}</td>
-                      <td className="px-3 py-2 text-gray-600">{t.date}</td>
-                      <td className={`px-3 py-2 text-right font-medium ${t.amount < 0 ? 'text-red-600' : 'text-emerald-700'}`}>{t.amount < 0 ? '-' : ''}{formatCurrency(Math.abs(t.amount))}</td>
-                    </tr>
-                  ))}
-                  {receivedTransactions.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-gray-500">Chưa có giao dịch.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+         
 
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Giao dịch sắp nhận</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Lịch sử giao dịch</h2>
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
@@ -224,23 +238,79 @@ const WithdrawPage: React.FC = () => {
                     <th className="px-3 py-2 text-left">Mã dự kiến</th>
                     <th className="px-3 py-2 text-left">Loại</th>
                     <th className="px-3 py-2 text-left">Booking</th>
-                    <th className="px-3 py-2 text-left">Thời gian dự kiến</th>
+                    <th className="px-3 py-2 text-left">Thời gian</th>
                     <th className="px-3 py-2 text-right">Số tiền</th>
+                    <th className="px-3 py-2 text-left">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {upcomingTransactions.map((t) => (
-                    <tr key={t.id} className="border-t border-gray-100">
-                      <td className="px-3 py-2 text-gray-800">#{t.id}</td>
-                      <td className="px-3 py-2 text-gray-700">{t.type}</td>
-                      <td className="px-3 py-2 text-gray-700">{t.bookingId}</td>
-                      <td className="px-3 py-2 text-gray-600">{t.date}</td>
-                      <td className="px-3 py-2 text-right font-medium text-emerald-700">{formatCurrency(t.amount)}</td>
-                    </tr>
-                  ))}
+                  {upcomingTransactions.map((t) => {
+                    const meta = STATUS_META[t.status];
+                    return (
+                      <tr key={t.id} className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-800">#{t.id}</td>
+                        <td className="px-3 py-2 text-gray-700">{t.type}</td>
+                        <td className="px-3 py-2 text-gray-700">{t.bookingId}</td>
+                        <td className="px-3 py-2 text-gray-600">{t.date}</td>
+                        <td className="px-3 py-2 text-right font-medium text-emerald-700">{formatCurrency(t.amount)}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap ${meta.bgColor} ${meta.textColor}`}>
+                            {meta.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {upcomingTransactions.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-gray-500">Không có giao dịch sắp tới.</td>
+                      <td colSpan={6} className="px-3 py-6 text-center text-gray-500">Không có giao dịch sắp tới.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Withdraw History */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Lịch sử rút tiền</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Mã rút tiền</th>
+                    <th className="px-3 py-2 text-right">Số tiền</th>
+                    <th className="px-3 py-2 text-left">Ngân hàng</th>
+                    <th className="px-3 py-2 text-left">Số TK</th>
+                    <th className="px-3 py-2 text-left">Ngày yêu cầu</th>
+                    <th className="px-3 py-2 text-left">Ngày xử lý</th>
+                    <th className="px-3 py-2 text-left">Ngày hoàn thành</th>
+                    <th className="px-3 py-2 text-left">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawHistory.map((w) => {
+                    const meta = WITHDRAW_STATUS_META[w.status];
+                    return (
+                      <tr key={w.id} className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-800">#{w.id}</td>
+                        <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(w.amount)}</td>
+                        <td className="px-3 py-2 text-gray-700">{w.bankName}</td>
+                        <td className="px-3 py-2 text-gray-700">{w.accountNumber}</td>
+                        <td className="px-3 py-2 text-gray-600">{w.requestDate}</td>
+                        <td className="px-3 py-2 text-gray-600">{w.processDate || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600">{w.completedDate || '—'}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap ${meta.bgColor} ${meta.textColor}`}>
+                            {meta.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {withdrawHistory.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-6 text-center text-gray-500">Chưa có lịch sử rút tiền.</td>
                     </tr>
                   )}
                 </tbody>

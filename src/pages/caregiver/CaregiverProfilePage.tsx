@@ -48,8 +48,6 @@ interface CaregiverProfile {
     educationLevel?: string; // 'trung-cap' | 'cao-dang' | 'dai-hoc' | 'sau-dai-hoc'
     graduationStatus?: string; // 'graduated' | 'not_graduated'
     graduationCertificate?: string; // base64
-    expectedSalaryMin?: number;
-    expectedSalaryMax?: number;
   };
   legalDocuments?: {
     criminalRecord?: string;
@@ -116,8 +114,6 @@ const CaregiverProfilePage: React.FC = () => {
     educationLevel: "",
     graduationStatus: "",
     graduationCertificate: "",
-    expectedSalaryMin: 0,
-    expectedSalaryMax: 0,
   });
 
   const [legalDocuments, setLegalDocuments] = useState<
@@ -223,10 +219,6 @@ const CaregiverProfilePage: React.FC = () => {
             (profile.professionalInfo as any)?.graduationStatus || "",
           graduationCertificate:
             (profile.professionalInfo as any)?.graduationCertificate || "",
-          expectedSalaryMin:
-            (profile.professionalInfo as any)?.expectedSalaryMin || 0,
-          expectedSalaryMax:
-            (profile.professionalInfo as any)?.expectedSalaryMax || 0,
         }));
         setLegalDocuments((prev) => ({
           ...prev,
@@ -463,12 +455,6 @@ const CaregiverProfilePage: React.FC = () => {
       !v || v.trim().length < 5 ? "Địa chỉ thường trú tối thiểu 5 ký tự" : "",
     yearsOfExperience: (v: number) =>
       v < 0 || v > 50 ? "Số năm kinh nghiệm 0-50" : "",
-    expectedSalary: (min: number, max: number) => {
-      if (!min || !max) return "Vui lòng nhập khoảng lương mong muốn";
-      if (min <= 0 || max <= 0) return "Mức lương phải lớn hơn 0";
-      if (min > max) return "Lương tối thiểu phải nhỏ hơn hoặc bằng tối đa";
-      return "";
-    },
   } as const;
 
   // Pure validity check (no state updates) for UI disabling
@@ -606,13 +592,6 @@ const CaregiverProfilePage: React.FC = () => {
       if (expError) criticalErrors.yearsOfExperience = expError;
     }
 
-    // Validate salary range strictly (required)
-    const salaryErr = validators.expectedSalary(
-      Number(professionalInfo.expectedSalaryMin || 0),
-      Number(professionalInfo.expectedSalaryMax || 0)
-    );
-    if (salaryErr) criticalErrors.expectedSalary = salaryErr;
-
     // Validate education if needed
     if (
       professionalInfo.educationLevel === "dai-hoc" &&
@@ -662,8 +641,6 @@ const CaregiverProfilePage: React.FC = () => {
         educationLevel: professionalInfo.educationLevel || "",
         graduationStatus: professionalInfo.graduationStatus || "",
         graduationCertificate: professionalInfo.graduationCertificate || "",
-        expectedSalaryMin: Number(professionalInfo.expectedSalaryMin || 0),
-        expectedSalaryMax: Number(professionalInfo.expectedSalaryMax || 0),
       },
       legalDocuments: {
         ...legalDocuments,
@@ -1457,64 +1434,6 @@ const CaregiverProfilePage: React.FC = () => {
             )}
           </div>
           {/* Expected salary */}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Khoảng mức lương mong muốn (bắt buộc) - VNĐ/tháng
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
-              <input
-                type="number"
-                min={0}
-                value={professionalInfo.expectedSalaryMin}
-                onChange={(e) =>
-                  setProfessionalInfo((prev) => ({
-                    ...prev,
-                    expectedSalaryMin: Number(e.target.value),
-                  }))
-                }
-                onBlur={() => {
-                  const err = validators.expectedSalary(
-                    Number(professionalInfo.expectedSalaryMin),
-                    Number(professionalInfo.expectedSalaryMax)
-                  );
-                  setErrors((prev) => ({ ...prev, expectedSalary: err }));
-                }}
-                className={`block w-full px-3 py-2 border rounded-md ${
-                  errors.expectedSalary ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Tối thiểu (VNĐ)"
-                required
-              />
-              <input
-                type="number"
-                min={0}
-                value={professionalInfo.expectedSalaryMax}
-                onChange={(e) =>
-                  setProfessionalInfo((prev) => ({
-                    ...prev,
-                    expectedSalaryMax: Number(e.target.value),
-                  }))
-                }
-                onBlur={() => {
-                  const err = validators.expectedSalary(
-                    Number(professionalInfo.expectedSalaryMin),
-                    Number(professionalInfo.expectedSalaryMax)
-                  );
-                  setErrors((prev) => ({ ...prev, expectedSalary: err }));
-                }}
-                className={`block w-full px-3 py-2 border rounded-md ${
-                  errors.expectedSalary ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Tối đa (VNĐ)"
-                required
-              />
-            </div>
-            {errors.expectedSalary && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.expectedSalary}
-              </p>
-            )}
-          </div>
           <div className="md:col-span-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
