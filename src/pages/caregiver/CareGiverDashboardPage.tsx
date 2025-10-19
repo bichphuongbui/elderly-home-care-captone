@@ -77,32 +77,32 @@ const CareGiverDashboardPage: React.FC = () => {
     {
       id: 1,
       date: formatISODate(today),
-      start: '14:00',
-      end: '16:00',
-      patientName: 'Bà Nguyễn Thị B',
-      service: 'Chăm sóc cá nhân',
+      start: '08:00',
+      end: '12:00',
+      patientName: 'Bà Nguyễn Thị Mai',
+      service: 'Chăm sóc cá nhân & Vật lý trị liệu',
       status: 'upcoming',
       location: 'Q.1, TP.HCM'
     },
     {
       id: 2,
       date: formatISODate(today),
-      start: '08:00',
-      end: '10:00',
-      patientName: 'Ông Trần Văn C',
-      service: 'Vận động trị liệu',
-      status: 'in-progress',
+      start: '14:00',
+      end: '16:00',
+      patientName: 'Ông Trần Văn Thanh',
+      service: 'Đo huyết áp & Uống thuốc',
+      status: 'upcoming',
       location: 'Q.3, TP.HCM'
     },
     {
       id: 3,
-      date: formatISODate(addDays(today, 2)),
-      start: '18:00',
-      end: '20:00',
-      patientName: 'Bà Lê Thị D',
-      service: 'Chăm sóc buổi tối',
-      status: 'completed',
-      location: 'Q.7, TP.HCM'
+      date: formatISODate(today),
+      start: '17:00',
+      end: '19:00',
+      patientName: 'Bà Lê Thị Hoa',
+      service: 'Chăm sóc tối & Chuẩn bị bữa ăn',
+      status: 'pending',
+      location: 'Q.Bình Thạnh, TP.HCM'
     }
   ];
 
@@ -495,10 +495,13 @@ const CareGiverDashboardPage: React.FC = () => {
 
       {/* Today's appointments */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <FiCalendar className="h-5 w-5 mr-2 text-blue-600" />
-          Cuộc hẹn hôm nay
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center">
+            <FiClock className="h-5 w-5 mr-2 text-blue-600" />
+            Lịch hẹn hôm nay
+          </h2>
+          <span className="text-gray-900 font-medium">{new Date().toLocaleDateString('vi-VN')}</span>
+        </div>
         
         {todayAppointments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -512,49 +515,35 @@ const CareGiverDashboardPage: React.FC = () => {
               const hasStarted = appointmentTasks[appointment.id]?.some(task => task.completed) || isActive;
               
               return (
-                <div key={appointment.id} className={`border rounded-lg p-4 ${isActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between mb-3">
+                <div key={appointment.id} className={`relative border-l-4 border-l-blue-500 bg-white rounded-lg shadow-sm p-4 mb-4 ${isActive ? 'ring-2 ring-blue-200' : ''}`}>
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">{appointment.patientName}</h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          appointment.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          appointment.status === 'in-progress' || isActive ? 'bg-blue-100 text-blue-700' :
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-bold text-gray-900">{appointment.patientName}</h3>
+                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
+                          appointment.status === 'completed' || appointment.status === 'upcoming' ? 'bg-green-100 text-green-700' :
+                          appointment.status === 'in-progress' || isActive ? 'bg-green-100 text-green-700' :
                           'bg-yellow-100 text-yellow-700'
                         }`}>
-                          {appointment.status === 'completed' ? 'Hoàn thành' :
-                           appointment.status === 'in-progress' || isActive ? 'Đang thực hiện' :
-                           'Sắp tới'}
+                          {appointment.status === 'completed' || appointment.status === 'upcoming' ? 'Đã xác nhận' :
+                           appointment.status === 'in-progress' || isActive ? 'Đã xác nhận' :
+                           'Chờ xác nhận'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">{appointment.service}</p>
-                      <p className="text-sm text-gray-500">
-                        <FiClock className="inline h-4 w-4 mr-1" />
-                        {appointment.start} - {appointment.end} • {appointment.location}
-                      </p>
+                      <div className="flex items-center text-gray-900 mb-1">
+                        <FiClock className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{appointment.start} - {appointment.end}</span>
+                      </div>
+                      <p className="text-sm text-gray-900 mb-1">{appointment.service}</p>
+                      <p className="text-sm text-gray-900">{appointment.location}</p>
                     </div>
                     
-                    <div className="flex space-x-2">
-                      {!isActive && !hasStarted && (
-                        <button
-                          onClick={() => startAppointment(appointment.id)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                        >
-                          <FiPlay className="h-4 w-4" />
-                          <span>Bắt đầu</span>
-                        </button>
-                      )}
-                      
-                      {(isActive || hasStarted) && (
-                        <button
-                          onClick={() => setActiveAppointmentId(isActive ? null : appointment.id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                        >
-                          <FiList className="h-4 w-4" />
-                          <span>{isActive ? 'Ẩn nhiệm vụ' : 'Chi tiết nhiệm vụ'}</span>
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => setActiveAppointmentId(isActive ? null : appointment.id)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Chi tiết
+                    </button>
                   </div>
                   
                   {/* Tasks for active appointment - grouped like booking detail */}
