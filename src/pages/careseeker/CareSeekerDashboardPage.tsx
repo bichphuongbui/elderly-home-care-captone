@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiCalendar, FiUsers, FiClock, FiVideo, FiStar, FiAlertTriangle, FiX, FiMapPin, FiPhone, FiMail, FiAward, FiClock as FiTimeIcon } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiVideo, FiStar, FiX, FiMapPin, FiPhone, FiMail, FiAward, FiClock as FiTimeIcon } from 'react-icons/fi';
 
 // Mock data types
 interface Caregiver {
@@ -19,26 +19,6 @@ interface Caregiver {
   availability: string;
 }
 
-interface Alert {
-  id: number;
-  time: string;
-  content: string;
-  type: 'warning' | 'info' | 'success' | 'normal';
-  reportedBy: {
-    name: string;
-    role: string;
-    avatar: string;
-  };
-  elderlyPerson: {
-    name: string;
-    age: number;
-    relationship: string;
-    avatar: string;
-  };
-  details: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'new' | 'acknowledged' | 'resolved';
-}
 
 interface Booking {
   id: number;
@@ -65,12 +45,22 @@ interface Booking {
   completedDate?: string;
 }
 
+type TaskType = 'fixed' | 'flexible' | 'optional';
+
+interface CareTask {
+  type: TaskType;
+  name: string;
+  description?: string;
+  days?: string[]; // Ngày trong tuần mà task áp dụng
+  startTime?: string; // Giờ bắt đầu nếu có
+  endTime?: string; // Giờ kết thúc nếu có (HH:mm)
+  completed?: boolean;
+}
+
 
 const CareSeekerDashboardPage: React.FC = () => {
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedBookingType, setSelectedBookingType] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedBookingCaregiver, setSelectedBookingCaregiver] = useState<Caregiver | null>(null);
@@ -89,7 +79,6 @@ const CareSeekerDashboardPage: React.FC = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{id: number, sender: 'user' | 'caregiver', message: string, timestamp: string}>>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [readAlerts, setReadAlerts] = useState<Set<number>>(new Set());
   const [bookingForm, setBookingForm] = useState({
     date: '',
     time: '',
@@ -98,6 +87,21 @@ const CareSeekerDashboardPage: React.FC = () => {
     notes: '',
     paymentMethod: 'cash'
   });
+  const [tasks, setTasks] = useState<CareTask[]>([]);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<CareTask | null>(null);
+  const [taskForm, setTaskForm] = useState({
+    type: 'fixed' as TaskType,
+    name: '',
+    description: '',
+    startTime: '',
+    endTime: ''
+  });
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [isQrGenerated, setIsQrGenerated] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
 
   // Lấy thông tin user từ localStorage
   const getCurrentUser = () => {
@@ -328,107 +332,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     { id: 2, name: 'Trần Thị Mẹ', age: 68, relationship: 'Mẹ', avatar: '👩‍🦳', conditions: ['Viêm khớp', 'Loãng xương'] }
   ];
 
-  // Mock caregiver suggestions for each family member
-  const caregiverSuggestions = [
-    {
-      familyMember: familyMembers[0], // Bố
-      suggestedCaregivers: [
-        { caregiver: caregivers[0], reason: 'Chuyên về chăm sóc người cao tuổi, phù hợp với tình trạng huyết áp cao và tiểu đường', matchScore: 95 },
-        { caregiver: caregivers[2], reason: 'Có kinh nghiệm theo dõi sức khỏe, đặc biệt là các bệnh mãn tính', matchScore: 88 }
-      ]
-    },
-    {
-      familyMember: familyMembers[1], // Mẹ
-      suggestedCaregivers: [
-        { caregiver: caregivers[1], reason: 'Chuyên về vật lý trị liệu, rất phù hợp với tình trạng viêm khớp và loãng xương', matchScore: 92 },
-        { caregiver: caregivers[0], reason: 'Có kinh nghiệm chăm sóc người cao tuổi với các vấn đề về xương khớp', matchScore: 85 }
-      ]
-    }
-  ];
 
-  // Mock alerts data
-  const alerts: Alert[] = [
-    {
-      id: 1,
-      time: '14:32 hôm nay',
-      content: 'Huyết áp cao bất thường - CẦN XỬ LÝ NGAY',
-      type: 'warning',
-      reportedBy: {
-        name: 'Trần Thị Mai',
-        role: 'Care Giver',
-        avatar: '👩‍⚕️'
-      },
-      elderlyPerson: {
-        name: 'Nguyễn Văn Bố',
-        age: 72,
-        relationship: 'Bố',
-        avatar: '👨‍🦳'
-      },
-      details: 'Huyết áp đo được là 160/95 mmHg, cao hơn bình thường. Bệnh nhân có biểu hiện đau đầu nhẹ. Đã cho uống thuốc hạ huyết áp theo chỉ định và theo dõi thêm.',
-      priority: 'high',
-      status: 'new'
-    },
-    {
-      id: 2,
-      time: '09:15 hôm nay',
-      content: 'Nhắc nhở uống thuốc buổi sáng',
-      type: 'info',
-      reportedBy: {
-        name: 'Lê Văn Hùng',
-        role: 'Care Giver',
-        avatar: '👨‍⚕️'
-      },
-      elderlyPerson: {
-        name: 'Trần Thị Mẹ',
-        age: 68,
-        relationship: 'Mẹ',
-        avatar: '👩‍🦳'
-      },
-      details: 'Đã nhắc nhở và giám sát bệnh nhân uống đầy đủ thuốc buổi sáng: Calcium 1 viên, Vitamin D 1 viên. Bệnh nhân hợp tác tốt.',
-      priority: 'medium',
-      status: 'acknowledged'
-    },
-    {
-      id: 3,
-      time: '16:45 hôm qua',
-      content: 'Lịch khám bệnh đã được xác nhận',
-      type: 'success',
-      reportedBy: {
-        name: 'Trần Thị Mai',
-        role: 'Care Giver',
-        avatar: '👩‍⚕️'
-      },
-      elderlyPerson: {
-        name: 'Nguyễn Văn Bố',
-        age: 72,
-        relationship: 'Bố',
-        avatar: '👨‍🦳'
-      },
-      details: 'Đã xác nhận lịch khám bệnh định kỳ tại Bệnh viện Đa khoa TP.HCM vào ngày 25/01/2024 lúc 9:00. Bệnh nhân đã được chuẩn bị đầy đủ giấy tờ cần thiết.',
-      priority: 'low',
-      status: 'resolved'
-    },
-    {
-      id: 4,
-      time: '11:30 hôm nay',
-      content: 'Tình trạng sức khỏe ổn định',
-      type: 'normal',
-      reportedBy: {
-        name: 'Phạm Thu Hà',
-        role: 'Care Giver',
-        avatar: '👩‍⚕️'
-      },
-      elderlyPerson: {
-        name: 'Trần Thị Mẹ',
-        age: 68,
-        relationship: 'Mẹ',
-        avatar: '👩‍🦳'
-      },
-      details: 'Bệnh nhân có tinh thần tốt, ăn uống đầy đủ, vận động nhẹ nhàng. Các chỉ số sức khỏe trong giới hạn bình thường.',
-      priority: 'low',
-      status: 'resolved'
-    }
-  ];
 
 
   const getColorClasses = (color: string) => {
@@ -441,15 +345,6 @@ const CareSeekerDashboardPage: React.FC = () => {
     return colorMap[color] || colorMap.blue;
   };
 
-  const getAlertColor = (type: string) => {
-    const colorMap: Record<string, string> = {
-      warning: 'bg-red-50 text-red-600 border-red-200',      // Đỏ - Nghiêm trọng nhất
-      info: 'bg-yellow-50 text-yellow-600 border-yellow-200', // Vàng - Cảnh báo
-      success: 'bg-orange-50 text-orange-600 border-orange-200', // Cam - Thông báo
-      normal: 'bg-green-50 text-green-600 border-green-200',   // Xanh - Bình thường
-    };
-    return colorMap[type] || colorMap.info;
-  };
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -480,17 +375,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     }).format(amount);
   };
 
-  // Hàm mở modal chi tiết alert
-  const handleViewAlertDetails = (alert: Alert) => {
-    setSelectedAlert(alert);
-    setIsAlertModalOpen(true);
-  };
 
-  // Hàm đóng modal alert
-  const handleCloseAlertModal = () => {
-    setIsAlertModalOpen(false);
-    setSelectedAlert(null);
-  };
 
   const handleViewBookings = (bookingType: string) => {
     setSelectedBookingType(bookingType);
@@ -528,15 +413,47 @@ const CareSeekerDashboardPage: React.FC = () => {
       notes: '',
       paymentMethod: 'cash'
     });
+    setTasks([]);
+    setQrCodeData(null);
+    setIsQrGenerated(false);
+    setIsPaymentProcessing(false);
+    setIsPaymentCompleted(false);
+    setPaymentStatus('pending');
   };
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Kiểm tra thanh toán QR Code
+    if (bookingForm.paymentMethod === 'qr' && !isPaymentCompleted) {
+      alert('Vui lòng hoàn thành thanh toán QR Code trước khi đặt lịch!');
+      return;
+    }
+    
     // TODO: Implement actual booking submission
-    const paymentMethodText = bookingForm.paymentMethod === 'cash' ? 'Tiền mặt (thanh toán khi hoàn thành)' : 'Chuyển khoản (thanh toán trước)';
+    const paymentMethodText = bookingForm.paymentMethod === 'cash' 
+      ? 'Tiền mặt (thanh toán khi hoàn thành)' 
+      : bookingForm.paymentMethod === 'transfer' 
+        ? 'Chuyển khoản (thanh toán trước)'
+        : 'QR Code (đã thanh toán)';
     const totalAmount = selectedBookingCaregiver ? (selectedBookingCaregiver.hourlyRate * parseInt(bookingForm.duration)).toLocaleString('vi-VN') : '0';
     
-    alert(`Đặt lịch thành công!\n\nCaregiver: ${selectedBookingCaregiver?.name}\nThành viên: ${selectedBookingFamilyMember?.name}\nNgày: ${bookingForm.date}\nGiờ: ${bookingForm.time}\nThời lượng: ${bookingForm.duration} giờ\nTổng tiền: ${totalAmount} VNĐ\nPhương thức: ${paymentMethodText}`);
+    let tasksText = '';
+    if (tasks.length > 0) {
+      tasksText = '\n\nNhiệm vụ chăm sóc:\n';
+      tasks.forEach((task, index) => {
+        const typeText = task.type === 'fixed' ? 'Cố định' : task.type === 'flexible' ? 'Linh hoạt' : 'Tùy chọn';
+        const timeText = task.startTime ? ` (${task.startTime}${task.endTime ? ` - ${task.endTime}` : ''})` : '';
+        tasksText += `${index + 1}. ${task.name} [${typeText}]${timeText}\n`;
+      });
+    }
+    
+    let paymentInfo = '';
+    if (bookingForm.paymentMethod === 'qr' && isPaymentCompleted) {
+      paymentInfo = '\n\nThông tin thanh toán:\n- Mã giao dịch: TXN' + Date.now().toString().slice(-8) + '\n- Thời gian: ' + new Date().toLocaleString('vi-VN');
+    }
+    
+    alert(`Đặt lịch thành công!\n\nCaregiver: ${selectedBookingCaregiver?.name}\nThành viên: ${selectedBookingFamilyMember?.name}\nNgày: ${bookingForm.date}\nGiờ: ${bookingForm.time}\nThời lượng: ${bookingForm.duration} giờ\nTổng tiền: ${totalAmount} VNĐ\nPhương thức: ${paymentMethodText}${tasksText}${paymentInfo}`);
     handleCloseBookingForm();
   };
 
@@ -666,67 +583,127 @@ const CareSeekerDashboardPage: React.FC = () => {
     alert(`Đang gọi ${caregiver.name}...\n\nSố điện thoại: 0901234567\n\n(Tính năng gọi video sẽ được tích hợp sau)`);
   };
 
-  const handleMarkAlertAsRead = (alertId: number) => {
-    setReadAlerts(prev => new Set([...prev, alertId]));
-    setIsAlertModalOpen(false);
-    setSelectedAlert(null);
+  // Task management functions
+  const handleAddTask = () => {
+    setEditingTask(null);
+    setTaskForm({
+      type: 'fixed',
+      name: '',
+      description: '',
+      startTime: '',
+      endTime: ''
+    });
+    setIsTaskModalOpen(true);
   };
 
-  // Hàm lấy màu priority
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const handleEditTask = (task: CareTask) => {
+    setEditingTask(task);
+    setTaskForm({
+      type: task.type,
+      name: task.name,
+      description: task.description || '',
+      startTime: task.startTime || '',
+      endTime: task.endTime || ''
+    });
+    setIsTaskModalOpen(true);
+  };
+
+  const handleDeleteTask = (index: number) => {
+    setTasks(tasks.filter((_, i) => i !== index));
+  };
+
+  const handleTaskSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskForm.name.trim()) return;
+
+    const newTask: CareTask = {
+      type: taskForm.type,
+      name: taskForm.name.trim(),
+      description: taskForm.description.trim() || undefined,
+      startTime: taskForm.startTime || undefined,
+      endTime: taskForm.endTime || undefined,
+      completed: false
+    };
+
+    if (editingTask) {
+      // Edit existing task
+      const index = tasks.findIndex(t => t === editingTask);
+      if (index !== -1) {
+        setTasks(tasks.map((t, i) => i === index ? newTask : t));
+      }
+    } else {
+      // Add new task
+      setTasks([...tasks, newTask]);
+    }
+
+    setIsTaskModalOpen(false);
+    setEditingTask(null);
+    setTaskForm({
+      type: 'fixed',
+      name: '',
+      description: '',
+      startTime: '',
+      endTime: ''
+    });
+  };
+
+  const handleCloseTaskModal = () => {
+    setIsTaskModalOpen(false);
+    setEditingTask(null);
+    setTaskForm({
+      type: 'fixed',
+      name: '',
+      description: '',
+      startTime: '',
+      endTime: ''
+    });
+  };
+
+  const handleGenerateQR = () => {
+    if (selectedBookingCaregiver) {
+      const totalAmount = selectedBookingCaregiver.hourlyRate * parseInt(bookingForm.duration);
+      const qrData = {
+        amount: totalAmount,
+        account: '1234567890',
+        bank: 'ABC Bank',
+        content: `Booking ${selectedBookingFamilyMember?.name} - ${bookingForm.date}`,
+        bookingId: `BK${Date.now()}`
+      };
+      
+      // Tạo QR data string (trong thực tế sẽ là URL hoặc data để tạo QR)
+      const qrString = `bank://transfer?account=${qrData.account}&amount=${qrData.amount}&content=${encodeURIComponent(qrData.content)}`;
+      setQrCodeData(qrString);
+      setIsQrGenerated(true);
+      setPaymentStatus('pending');
+      setIsPaymentCompleted(false);
     }
   };
 
-  // Hàm lấy text priority
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'Cao';
-      case 'medium':
-        return 'Trung bình';
-      case 'low':
-        return 'Thấp';
-      default:
-        return 'Không xác định';
-    }
+  const handlePaymentConfirm = () => {
+    setIsPaymentProcessing(true);
+    setPaymentStatus('processing');
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      setIsPaymentProcessing(false);
+      setPaymentStatus('completed');
+      setIsPaymentCompleted(true);
+      
+      // Show success message
+      alert('Thanh toán thành công! Booking đã được xác nhận.');
+    }, 3000);
   };
 
-  // Hàm lấy màu status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'acknowledged':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'resolved':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const handlePaymentRetry = () => {
+    setPaymentStatus('pending');
+    setIsPaymentCompleted(false);
+    setIsPaymentProcessing(false);
   };
 
-  // Hàm lấy text status
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'new':
-        return 'Mới';
-      case 'acknowledged':
-        return 'Đã xác nhận';
-      case 'resolved':
-        return 'Đã giải quyết';
-      default:
-        return 'Không xác định';
-    }
-  };
+
+
+
+
 
 
   return (
@@ -741,252 +718,229 @@ const CareSeekerDashboardPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Critical Alerts - Nổi bật ở đầu trang - chỉ hiện cảnh báo trong ngày hôm đó chưa đọc */}
-      {alerts.filter(alert => alert.priority === 'high' && alert.time.includes('Hôm nay') && !readAlerts.has(alert.id)).length > 0 && (
-        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500 rounded-xl p-6 shadow-lg">
+
+      {/* Recent Bookings - Hiển thị trực tiếp thay vì chỉ thống kê */}
+      <div className="space-y-6">
+        {/* Bookings đang diễn ra */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-red-900">⚠️ Cảnh báo khẩn cấp</h3>
-                <p className="text-sm text-red-700">Có {alerts.filter(alert => alert.priority === 'high' && alert.time.includes('Hôm nay') && !readAlerts.has(alert.id)).length} cảnh báo nghiêm trọng cần xử lý ngay</p>
-              </div>
-            </div>
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <FiClock className="h-5 w-5 mr-2 text-blue-600" />
+              Đang diễn ra
+            </h2>
             <button
-              onClick={() => {
-                setSelectedAlert(alerts.filter(alert => alert.priority === 'high' && alert.time.includes('Hôm nay'))[0]);
-                setIsAlertModalOpen(true);
-              }}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              onClick={() => handleViewBookings('active')}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
             >
-              Xem chi tiết
+              Xem tất cả
             </button>
           </div>
-          
-          <div className="space-y-3">
-            {alerts
-              .filter(alert => alert.priority === 'high' && alert.time.includes('Hôm nay') && !readAlerts.has(alert.id))
-              .slice(0, 2)
-              .map((alert) => (
-                <div key={alert.id} className={`rounded-lg p-4 border hover:shadow-md transition-shadow ${
-                  readAlerts.has(alert.id) 
-                    ? 'bg-gray-50 border-gray-300' 
-                    : 'bg-white border-red-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{alert.elderlyPerson.avatar}</span>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h4 className={`font-semibold ${
-                            readAlerts.has(alert.id) ? 'text-gray-500' : 'text-gray-900'
-                          }`}>{alert.elderlyPerson.name}</h4>
-                          {readAlerts.has(alert.id) && (
-                            <div className="flex items-center space-x-1">
-                              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="text-xs text-green-600 font-medium">Đã đọc</span>
-                            </div>
-                          )}
+          <div className="space-y-4">
+            {bookings.filter(booking => booking.status === 'active').slice(0, 2).map((booking) => (
+              <div key={booking.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl">
+                      {booking.caregiver.avatar}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{booking.caregiver.name}</h3>
+                      <p className="text-sm text-gray-600">{booking.caregiver.specialty}</p>
+                      <div className="flex items-center mt-1">
+                        <div className="flex items-center">
+                          {renderStars(booking.caregiver.rating)}
                         </div>
-                        <p className={`text-sm ${
-                          readAlerts.has(alert.id) ? 'text-gray-400' : 'text-gray-600'
-                        }`}>{alert.content}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        readAlerts.has(alert.id) 
-                          ? 'bg-gray-100 text-gray-600' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {readAlerts.has(alert.id) ? 'Đã xử lý' : 'Nghiêm trọng'}
-                      </span>
-                      <button
-                        onClick={() => handleOpenChat(alert.reportedBy)}
-                        className="w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
-                        title="Nhắn tin với caregiver"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.map((stat, index) => (
-          <div 
-            key={index} 
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all duration-200 hover:scale-105 cursor-pointer"
-            onClick={() => handleViewBookings(stat.type)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg ${getColorClasses(stat.color)}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-              <div>
-                  <h3 className="text-sm font-semibold text-gray-900">{stat.label}</h3>
-                  <p className="text-xs text-gray-500">{stat.description}</p>
-              </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-xs text-blue-600 font-medium">Chi tiết →</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Suggested Caregivers */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <FiUsers className="h-5 w-5 mr-2 text-blue-600" />
-            Gợi ý người chăm sóc phù hợp
-          </h2>
-          <div className="space-y-6">
-            {caregiverSuggestions.map((suggestion, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                {/* Thông tin thành viên gia đình */}
-                <div className="flex items-center space-x-3 mb-4">
-                  <span className="text-2xl">{suggestion.familyMember.avatar}</span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{suggestion.familyMember.name}</h3>
-                    <p className="text-sm text-gray-600">{suggestion.familyMember.age} tuổi - {suggestion.familyMember.relationship}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {suggestion.familyMember.conditions.map((condition, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                          {condition}
+                        <span className="ml-2 text-sm text-gray-600">
+                          {booking.caregiver.rating} ({booking.caregiver.reviewCount} đánh giá)
                         </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Gợi ý caregiver */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700">Gợi ý phù hợp:</h4>
-                  {suggestion.suggestedCaregivers.map((suggestionItem, idx) => (
-                    <div key={idx} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="text-2xl">{suggestionItem.caregiver.avatar}</div>
-                <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h5 className="font-semibold text-gray-900">{suggestionItem.caregiver.name}</h5>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-green-600">{suggestionItem.matchScore}% phù hợp</span>
-                            <div className="flex items-center">
-                              {renderStars(suggestionItem.caregiver.rating)}
-                              <span className="ml-1 text-sm text-gray-600">{suggestionItem.caregiver.rating}</span>
-                  </div>
-                </div>
-                        </div>
-                        <p className="text-sm text-gray-600">{suggestionItem.caregiver.specialty}</p>
-                        <p className="text-xs text-gray-500 mt-1">{suggestionItem.reason}</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleViewDetails(suggestionItem.caregiver)}
-                          className="px-3 py-1 bg-gray-600 text-white text-xs font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                  Xem chi tiết
-                </button>
-                        <button 
-                          onClick={() => handleBookCaregiver(suggestionItem.caregiver, suggestion.familyMember)}
-                          className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          Đặt lịch ngay
-                </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{booking.date}</p>
+                    <p className="text-sm text-gray-600">{booking.time}</p>
+                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full mt-1">
+                      Đang diễn ra
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span>👴 {booking.patientName}</span>
+                    <span>⏱️ {booking.duration} giờ</span>
+                    <span>💰 {formatCurrency(booking.totalAmount)}</span>
+                  </div>
+                  <button
+                    onClick={() => handleOpenChat(booking.caregiver)}
+                    className="w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
+                    title="Nhắn tin"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))}
+            {bookings.filter(booking => booking.status === 'active').length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <FiClock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Không có booking nào đang diễn ra</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Recent Alerts */}
+        {/* Bookings sắp tới */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <FiAlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
-            Cảnh báo gần đây
-          </h2>
-          <div className="space-y-3">
-            {alerts.map((alert) => (
-              <div key={alert.id} className={`p-4 rounded-lg border ${getAlertColor(alert.type)} hover:shadow-md transition-shadow cursor-pointer`} onClick={() => handleViewAlertDetails(alert)}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    {/* Thông tin người già (ưu tiên) */}
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{alert.elderlyPerson.avatar}</span>
-                        <div>
-                          <span className="text-lg font-semibold text-gray-900">{alert.elderlyPerson.name}</span>
-                          <span className="text-sm text-gray-600 ml-2">({alert.elderlyPerson.age} tuổi - {alert.elderlyPerson.relationship})</span>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <FiCalendar className="h-5 w-5 mr-2 text-green-600" />
+              Sắp tới
+            </h2>
+            <button
+              onClick={() => handleViewBookings('upcoming')}
+              className="text-green-600 hover:text-green-800 text-sm font-medium"
+            >
+              Xem tất cả
+            </button>
+          </div>
+          <div className="space-y-4">
+            {bookings.filter(booking => booking.status === 'upcoming').slice(0, 2).map((booking) => (
+              <div key={booking.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-xl">
+                      {booking.caregiver.avatar}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{booking.caregiver.name}</h3>
+                      <p className="text-sm text-gray-600">{booking.caregiver.specialty}</p>
+                      <div className="flex items-center mt-1">
+                        <div className="flex items-center">
+                          {renderStars(booking.caregiver.rating)}
                         </div>
+                        <span className="ml-2 text-sm text-gray-600">
+                          {booking.caregiver.rating} ({booking.caregiver.reviewCount} đánh giá)
+                        </span>
                       </div>
-                    </div>
-                    
-                    {/* Nội dung cảnh báo */}
-                    <p className="font-medium text-gray-900 mb-2">{alert.content}</p>
-                    
-                    {/* Thông tin người báo (nhỏ) và thời gian */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">Báo bởi:</span>
-                        <span className="text-xs">{alert.reportedBy.avatar}</span>
-                        <span className="text-xs font-medium text-gray-600">{alert.reportedBy.name}</span>
-                        <span className="text-xs text-gray-500">({alert.reportedBy.role})</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-600">{alert.time}</p>
-                        {/* Nút chat cho caregiver báo cáo */}
-                        <button
-                          onClick={() => handleOpenChat(alert.reportedBy)}
-                          className="w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
-                          title="Nhắn tin với caregiver"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Trạng thái */}
-                    <div className="flex items-center justify-end space-x-2 mt-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(alert.priority)}`}>
-                        {getPriorityText(alert.priority)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(alert.status)}`}>
-                        {getStatusText(alert.status)}
-                      </span>
                     </div>
                   </div>
-                  <div className="ml-3">
-                    <FiAlertTriangle className="h-5 w-5" />
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{booking.date}</p>
+                    <p className="text-sm text-gray-600">{booking.time}</p>
+                    <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full mt-1">
+                      Sắp tới
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span>👴 {booking.patientName}</span>
+                    <span>⏱️ {booking.duration} giờ</span>
+                    <span>💰 {formatCurrency(booking.totalAmount)}</span>
+                  </div>
+                  <button
+                    onClick={() => handleOpenChat(booking.caregiver)}
+                    className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
+                    title="Nhắn tin"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {bookings.filter(booking => booking.status === 'upcoming').length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <FiCalendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Không có booking nào sắp tới</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bookings đã hoàn thành */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <FiStar className="h-5 w-5 mr-2 text-purple-600" />
+              Đã hoàn thành
+            </h2>
+            <button
+              onClick={() => handleViewBookings('completed')}
+              className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+            >
+              Xem tất cả
+            </button>
+          </div>
+          <div className="space-y-4">
+            {bookings.filter(booking => booking.status === 'completed').slice(0, 2).map((booking) => (
+              <div key={booking.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-xl">
+                      {booking.caregiver.avatar}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{booking.caregiver.name}</h3>
+                      <p className="text-sm text-gray-600">{booking.caregiver.specialty}</p>
+                      <div className="flex items-center mt-1">
+                        <div className="flex items-center">
+                          {renderStars(booking.caregiver.rating)}
+                        </div>
+                        <span className="ml-2 text-sm text-gray-600">
+                          {booking.caregiver.rating} ({booking.caregiver.reviewCount} đánh giá)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{booking.date}</p>
+                    <p className="text-sm text-gray-600">{booking.time}</p>
+                    <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full mt-1">
+                      Đã hoàn thành
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span>👴 {booking.patientName}</span>
+                    <span>⏱️ {booking.duration} giờ</span>
+                    <span>💰 {formatCurrency(booking.totalAmount)}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleOpenChat(booking.caregiver)}
+                      className="w-8 h-8 bg-purple-500 hover:bg-purple-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
+                      title="Nhắn tin"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleReviewBooking(booking)}
+                      className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full hover:bg-yellow-200 transition-colors"
+                    >
+                      Đánh giá
+                    </button>
                   </div>
                 </div>
               </div>
             ))}
+            {bookings.filter(booking => booking.status === 'completed').length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <FiStar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Chưa có booking nào đã hoàn thành</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+
 
 
       {/* Modal chi tiết Caregiver */}
@@ -1091,106 +1045,6 @@ const CareSeekerDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal chi tiết Alert */}
-      {isAlertModalOpen && selectedAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header Modal */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Chi tiết cảnh báo</h2>
-              <button
-                onClick={handleCloseAlertModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <FiX className="h-6 w-6 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Content Modal */}
-            <div className="p-6 space-y-6">
-              {/* Thông tin người báo và người già */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="text-center">
-                    <div className="text-3xl mb-1">{selectedAlert.reportedBy.avatar}</div>
-                    <h3 className="font-semibold text-gray-900">{selectedAlert.reportedBy.name}</h3>
-                    <p className="text-sm text-gray-600">{selectedAlert.reportedBy.role}</p>
-                  </div>
-                  <div className="text-2xl text-gray-400">→</div>
-                  <div className="text-center">
-                    <div className="text-3xl mb-1">{selectedAlert.elderlyPerson.avatar}</div>
-                    <h3 className="font-semibold text-gray-900">{selectedAlert.elderlyPerson.name}</h3>
-                    <p className="text-sm text-gray-600">{selectedAlert.elderlyPerson.age} tuổi - {selectedAlert.elderlyPerson.relationship}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Nội dung cảnh báo */}
-              <div className={`p-4 rounded-lg border ${getAlertColor(selectedAlert.type)}`}>
-                <h4 className="font-semibold text-gray-900 mb-2">Nội dung cảnh báo</h4>
-                <p className="text-gray-700">{selectedAlert.content}</p>
-              </div>
-
-              {/* Chi tiết */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Chi tiết</h4>
-                <p className="text-gray-700 leading-relaxed">{selectedAlert.details}</p>
-              </div>
-
-              {/* Thông tin bổ sung */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Mức độ ưu tiên</h4>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(selectedAlert.priority)}`}>
-                    {getPriorityText(selectedAlert.priority)}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Trạng thái</h4>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedAlert.status)}`}>
-                    {getStatusText(selectedAlert.status)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Thời gian */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Thời gian báo cáo</h4>
-                <p className="text-gray-700">{selectedAlert.time}</p>
-              </div>
-            </div>
-
-            {/* Footer Modal */}
-            <div className="flex items-center justify-end space-x-4 p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={handleCloseAlertModal}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Đóng
-              </button>
-              {selectedAlert.status === 'new' && !readAlerts.has(selectedAlert.id) && (
-                <button 
-                  onClick={() => handleMarkAlertAsRead(selectedAlert.id)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Xác nhận đã đọc</span>
-                </button>
-              )}
-              {readAlerts.has(selectedAlert.id) && (
-                <div className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">Đã xác nhận đọc</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal chi tiết Bookings */}
       {isBookingModalOpen && selectedBookingType && (
@@ -1448,21 +1302,94 @@ const CareSeekerDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú thêm</label>
-                  <textarea
-                    value={bookingForm.notes}
-                    onChange={(e) => setBookingForm({...bookingForm, notes: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    placeholder="Mô tả chi tiết về nhu cầu chăm sóc..."
-                  />
-                </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú thêm</label>
+                   <textarea
+                     value={bookingForm.notes}
+                     onChange={(e) => setBookingForm({...bookingForm, notes: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     rows={3}
+                     placeholder="Mô tả chi tiết về nhu cầu chăm sóc..."
+                   />
+                 </div>
+
+                 {/* Tasks Section */}
+                 <div>
+                   <div className="flex items-center justify-between mb-3">
+                     <label className="block text-sm font-medium text-gray-700">Nhiệm vụ chăm sóc</label>
+                     <button
+                       type="button"
+                       onClick={handleAddTask}
+                       className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                     >
+                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                       </svg>
+                       Thêm nhiệm vụ
+                     </button>
+                   </div>
+                   
+                   {tasks.length > 0 ? (
+                     <div className="space-y-2 max-h-60 overflow-y-auto">
+                       {tasks.map((task, index) => (
+                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                           <div className="flex-1">
+                             <div className="flex items-center space-x-2">
+                               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                 task.type === 'fixed' ? 'bg-red-100 text-red-800' :
+                                 task.type === 'flexible' ? 'bg-yellow-100 text-yellow-800' :
+                                 'bg-green-100 text-green-800'
+                               }`}>
+                                 {task.type === 'fixed' ? 'Cố định' :
+                                  task.type === 'flexible' ? 'Linh hoạt' : 'Tùy chọn'}
+                               </span>
+                               <span className="font-medium text-gray-900">{task.name}</span>
+                             </div>
+                             {task.description && (
+                               <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                             )}
+                             {task.startTime && (
+                               <p className="text-xs text-gray-500 mt-1">
+                                 {task.startTime}{task.endTime ? ` - ${task.endTime}` : ''}
+                               </p>
+                             )}
+                           </div>
+                           <div className="flex items-center space-x-2">
+                             <button
+                               type="button"
+                               onClick={() => handleEditTask(task)}
+                               className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                               title="Sửa"
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                               </svg>
+                             </button>
+                             <button
+                               type="button"
+                               onClick={() => handleDeleteTask(index)}
+                               className="p-1 text-red-600 hover:bg-red-100 rounded"
+                               title="Xóa"
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                               </svg>
+                             </button>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="text-center py-4 text-gray-500 text-sm">
+                       Chưa có nhiệm vụ nào. Nhấn "Thêm nhiệm vụ" để bắt đầu.
+                     </div>
+                   )}
+                 </div>
 
                 {/* Phương thức thanh toán */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Phương thức thanh toán</label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
                       bookingForm.paymentMethod === 'cash' 
                         ? 'border-blue-500 bg-blue-50' 
@@ -1514,6 +1441,32 @@ const CareSeekerDashboardPage: React.FC = () => {
                         </div>
                       </div>
                     </label>
+
+                    <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                      bookingForm.paymentMethod === 'qr' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="qr"
+                        checked={bookingForm.paymentMethod === 'qr'}
+                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value})}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 border-2 rounded-full flex items-center justify-center">
+                          {bookingForm.paymentMethod === 'qr' && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">QR Code</div>
+                          <div className="text-sm text-gray-500">Quét mã thanh toán</div>
+                        </div>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
@@ -1543,6 +1496,157 @@ const CareSeekerDashboardPage: React.FC = () => {
                       <p className="text-xs text-yellow-700">
                         Nội dung: Booking {selectedBookingFamilyMember?.name} - {bookingForm.date}
                       </p>
+                    </div>
+                  )}
+
+                  {bookingForm.paymentMethod === 'qr' && (
+                    <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center mb-3">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        <span className="text-sm text-green-800 font-medium">Thanh toán QR Code</span>
+                      </div>
+                      <div className="bg-white p-4 rounded-lg border-2 border-dashed border-green-300 text-center">
+                        {!isQrGenerated ? (
+                          <>
+                            <div className="w-32 h-32 mx-auto mb-3 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                              </svg>
+                            </div>
+                            <p className="text-sm text-green-700 font-medium mb-2">Tạo mã QR để thanh toán</p>
+                            <p className="text-xs text-green-600 mb-3">
+                              Nhấn nút bên dưới để tạo mã QR cho giao dịch {(selectedBookingCaregiver.hourlyRate * parseInt(bookingForm.duration)).toLocaleString('vi-VN')} VNĐ
+                            </p>
+                            <button 
+                              type="button"
+                              onClick={handleGenerateQR}
+                              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              Tạo mã QR
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-32 h-32 mx-auto mb-3 bg-white rounded-lg border-2 border-green-200 flex items-center justify-center">
+                              <div className="w-28 h-28 bg-black rounded grid grid-cols-8 gap-0.5 p-1">
+                                {/* Mock QR Code pattern */}
+                                {Array.from({ length: 64 }).map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`w-full h-full ${Math.random() > 0.5 ? 'bg-white' : 'bg-black'}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Payment Status */}
+                            {paymentStatus === 'pending' && (
+                              <>
+                                <p className="text-sm text-green-700 font-medium mb-2">Mã QR đã được tạo</p>
+                                <p className="text-xs text-green-600 mb-2">
+                                  Quét mã QR bằng ứng dụng ngân hàng để thanh toán {(selectedBookingCaregiver.hourlyRate * parseInt(bookingForm.duration)).toLocaleString('vi-VN')} VNĐ
+                                </p>
+                                <div className="text-xs text-gray-500 mb-3">
+                                  <p>Ngân hàng: ABC Bank</p>
+                                  <p>Tài khoản: 1234567890</p>
+                                  <p>Nội dung: Booking {selectedBookingFamilyMember?.name} - {bookingForm.date}</p>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <button 
+                                    type="button"
+                                    onClick={() => setIsQrGenerated(false)}
+                                    className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded hover:bg-gray-600 transition-colors"
+                                  >
+                                    Tạo lại
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={handlePaymentConfirm}
+                                    className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                                  >
+                                    Đã thanh toán
+                                  </button>
+                                </div>
+                              </>
+                            )}
+
+                            {paymentStatus === 'processing' && (
+                              <>
+                                <div className="flex items-center justify-center mb-3">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                                </div>
+                                <p className="text-sm text-green-700 font-medium mb-2">Đang xử lý thanh toán...</p>
+                                <p className="text-xs text-green-600">
+                                  Vui lòng chờ trong giây lát
+                                </p>
+                              </>
+                            )}
+
+                            {paymentStatus === 'completed' && (
+                              <>
+                                <div className="flex items-center justify-center mb-3">
+                                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-green-700 font-medium mb-2">Thanh toán thành công!</p>
+                                <p className="text-xs text-green-600 mb-3">
+                                  Booking đã được xác nhận và sẽ được xử lý
+                                </p>
+                                <div className="text-xs text-gray-500 mb-3">
+                                  <p>Mã giao dịch: TXN{Date.now().toString().slice(-8)}</p>
+                                  <p>Thời gian: {new Date().toLocaleString('vi-VN')}</p>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    setIsQrGenerated(false);
+                                    setPaymentStatus('pending');
+                                    setIsPaymentCompleted(false);
+                                  }}
+                                  className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                                >
+                                  Tạo giao dịch mới
+                                </button>
+                              </>
+                            )}
+
+                            {paymentStatus === 'failed' && (
+                              <>
+                                <div className="flex items-center justify-center mb-3">
+                                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-red-700 font-medium mb-2">Thanh toán thất bại</p>
+                                <p className="text-xs text-red-600 mb-3">
+                                  Có lỗi xảy ra trong quá trình xử lý thanh toán
+                                </p>
+                                <div className="flex space-x-2">
+                                  <button 
+                                    type="button"
+                                    onClick={handlePaymentRetry}
+                                    className="px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
+                                  >
+                                    Thử lại
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setIsQrGenerated(false)}
+                                    className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded hover:bg-gray-600 transition-colors"
+                                  >
+                                    Tạo lại QR
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1763,8 +1867,175 @@ const CareSeekerDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Chat Modal */}
-      {isChatModalOpen && selectedCaregiverForChat && (
+       {/* Task Modal */}
+       {isTaskModalOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+             {/* Header Modal */}
+             <div className="flex items-center justify-between p-6 border-b border-gray-200">
+               <h2 className="text-xl font-bold text-gray-900">
+                 {editingTask ? 'Sửa nhiệm vụ' : 'Thêm nhiệm vụ mới'}
+               </h2>
+               <button
+                 onClick={handleCloseTaskModal}
+                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+               >
+                 <FiX className="h-5 w-5 text-gray-500" />
+               </button>
+             </div>
+
+             {/* Content Modal */}
+             <div className="p-6">
+               <form onSubmit={handleTaskSubmit} className="space-y-4">
+                 {/* Task Type */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhiệm vụ</label>
+                   <div className="grid grid-cols-3 gap-2">
+                     <label className={`relative flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                       taskForm.type === 'fixed' 
+                         ? 'border-red-500 bg-red-50' 
+                         : 'border-gray-200 hover:bg-gray-50'
+                     }`}>
+                       <input
+                         type="radio"
+                         name="taskType"
+                         value="fixed"
+                         checked={taskForm.type === 'fixed'}
+                         onChange={(e) => setTaskForm({...taskForm, type: e.target.value as TaskType})}
+                         className="sr-only"
+                       />
+                       <div className="text-center w-full">
+                         <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-1"></div>
+                         <div className="text-xs font-medium text-gray-900">Cố định</div>
+                         <div className="text-xs text-gray-500">Bắt buộc đúng giờ</div>
+                       </div>
+                     </label>
+                     
+                     <label className={`relative flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                       taskForm.type === 'flexible' 
+                         ? 'border-yellow-500 bg-yellow-50' 
+                         : 'border-gray-200 hover:bg-gray-50'
+                     }`}>
+                       <input
+                         type="radio"
+                         name="taskType"
+                         value="flexible"
+                         checked={taskForm.type === 'flexible'}
+                         onChange={(e) => setTaskForm({...taskForm, type: e.target.value as TaskType})}
+                         className="sr-only"
+                       />
+                       <div className="text-center w-full">
+                         <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
+                         <div className="text-xs font-medium text-gray-900">Linh hoạt</div>
+                         <div className="text-xs text-gray-500">Trong thời gian</div>
+                       </div>
+                     </label>
+                     
+                     <label className={`relative flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                       taskForm.type === 'optional' 
+                         ? 'border-green-500 bg-green-50' 
+                         : 'border-gray-200 hover:bg-gray-50'
+                     }`}>
+                       <input
+                         type="radio"
+                         name="taskType"
+                         value="optional"
+                         checked={taskForm.type === 'optional'}
+                         onChange={(e) => setTaskForm({...taskForm, type: e.target.value as TaskType})}
+                         className="sr-only"
+                       />
+                       <div className="text-center w-full">
+                         <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
+                         <div className="text-xs font-medium text-gray-900">Tùy chọn</div>
+                         <div className="text-xs text-gray-500">Nếu có thời gian</div>
+                       </div>
+                     </label>
+                   </div>
+                 </div>
+
+                 {/* Task Name */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Tên nhiệm vụ</label>
+                   <input
+                     type="text"
+                     value={taskForm.name}
+                     onChange={(e) => setTaskForm({...taskForm, name: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="Ví dụ: Uống thuốc huyết áp"
+                     required
+                   />
+                 </div>
+
+                 {/* Task Description */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                   <textarea
+                     value={taskForm.description}
+                     onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     rows={2}
+                     placeholder="Mô tả chi tiết nhiệm vụ..."
+                   />
+                 </div>
+
+                 {/* Time (only for fixed and flexible tasks) */}
+                 {taskForm.type !== 'optional' && (
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">Giờ bắt đầu</label>
+                       <input
+                         type="time"
+                         value={taskForm.startTime}
+                         onChange={(e) => setTaskForm({...taskForm, startTime: e.target.value})}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">Giờ kết thúc</label>
+                       <input
+                         type="time"
+                         value={taskForm.endTime}
+                         onChange={(e) => setTaskForm({...taskForm, endTime: e.target.value})}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       />
+                     </div>
+                   </div>
+                 )}
+
+                 {/* Info Box */}
+                 <div className={`p-3 rounded-lg text-sm ${
+                   taskForm.type === 'fixed' ? 'bg-red-50 text-red-700' :
+                   taskForm.type === 'flexible' ? 'bg-yellow-50 text-yellow-700' :
+                   'bg-green-50 text-green-700'
+                 }`}>
+                   {taskForm.type === 'fixed' && 'Nhiệm vụ cố định: Phải thực hiện đúng giờ đã định, không được bỏ qua.'}
+                   {taskForm.type === 'flexible' && 'Nhiệm vụ linh hoạt: Có thể thực hiện trong khoảng thời gian đã định, nhưng bắt buộc phải hoàn thành.'}
+                   {taskForm.type === 'optional' && 'Nhiệm vụ tùy chọn: Chỉ thực hiện khi còn thời gian, không bắt buộc.'}
+                 </div>
+               </form>
+             </div>
+
+             {/* Footer Modal */}
+             <div className="flex items-center justify-end space-x-4 p-6 border-t border-gray-200 bg-gray-50">
+               <button
+                 onClick={handleCloseTaskModal}
+                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+               >
+                 Hủy
+               </button>
+               <button
+                 onClick={handleTaskSubmit}
+                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+               >
+                 {editingTask ? 'Cập nhật' : 'Thêm nhiệm vụ'}
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Chat Modal */}
+       {isChatModalOpen && selectedCaregiverForChat && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full h-[600px] flex flex-col">
             {/* Header Modal */}

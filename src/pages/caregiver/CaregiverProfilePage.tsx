@@ -1668,25 +1668,6 @@ const CaregiverProfilePage: React.FC = () => {
               </div>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Người tham chiếu - Tên</label>
-            <input type="text" value={references.referenceName} onChange={(e) => setReferences(prev => ({ ...prev, referenceName: e.target.value }))} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Người tham chiếu - SĐT</label>
-            <input
-              type="tel"
-              value={references.referencePhone}
-              onChange={(e) => setReferences(prev => ({ ...prev, referencePhone: e.target.value.replace(/[^\d+]/g, '').slice(0, 12) }))}
-              onBlur={() => {}}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-              ref={!errors.referencePhone ? undefined : (el) => { if (!firstErrorRef.current) firstErrorRef.current = el; }}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Người tham chiếu - Quan hệ</label>
-            <input type="text" value={references.referenceRelation} onChange={(e) => setReferences(prev => ({ ...prev, referenceRelation: e.target.value }))} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-          </div>
           <div className="md:col-span-2">
             <label className="flex items-center text-sm">
               <input type="checkbox" checked={commitments.ethicalCommitment} onChange={(e) => setCommitments(prev => ({ ...prev, ethicalCommitment: e.target.checked }))} className="mr-2" />

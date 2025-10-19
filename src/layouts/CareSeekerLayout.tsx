@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUser, FiHeart, FiCalendar, FiVideo, FiAlertTriangle, FiMenu, FiX, FiLogOut, FiUserCheck } from 'react-icons/fi';
+import { FiHome, FiUser, FiHeart, FiCalendar, FiAlertTriangle, FiMenu, FiX, FiLogOut, FiUserCheck, FiMessageCircle, FiBookOpen } from 'react-icons/fi';
 import Footer from '../components/layout/Footer';
 
 interface CareSeekerLayoutProps {
@@ -16,7 +16,8 @@ const CareSeekerLayout: React.FC<CareSeekerLayoutProps> = ({ children }) => {
     { icon: FiHome, label: 'Dashboard', path: '/care-seeker' },
     { icon: FiUserCheck, label: 'Gia đình', path: '/care-seeker/family' },
     { icon: FiHeart, label: 'Hồ sơ sức khỏe', path: '/care-seeker/health' },
-    { icon: FiVideo, label: 'Video tư vấn', path: '/care-seeker/video' },
+    { icon: FiBookOpen, label: 'Đặt lịch', path: '/care-seeker/booking' },
+    { icon: FiMessageCircle, label: 'Trò chuyện', path: '/care-seeker/chat' },
   ];
 
   const handleMenuClick = (path: string) => {
@@ -120,7 +121,7 @@ const CareSeekerLayout: React.FC<CareSeekerLayoutProps> = ({ children }) => {
 
         {/* Main Content */}
         <main className="flex-1 min-h-screen">
-          <div className="p-6">
+          <div className="p-6 pb-20">
             {children || <Outlet />}
           </div>
         </main>
