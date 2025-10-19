@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type ComplaintTag = 'reviewing' | 'awaiting_more_info' | 'resolved' | 'refunded' | 'rejected';
@@ -24,13 +24,6 @@ const ComplaintReviewPage: React.FC = () => {
 
   const tag = (localStorage.getItem(`complaint_tag_${bookingId}`) as ComplaintTag | null) || 'reviewing';
   const canReview = ['resolved','refunded','rejected'].includes(tag);
-
-  useEffect(() => {
-    if (!canReview) {
-      // Guard: if status not allowed, go back
-      // but still render message for UX
-    }
-  }, [canReview]);
 
   const save = () => {
     if (!comment.trim()) {
@@ -59,50 +52,49 @@ const ComplaintReviewPage: React.FC = () => {
 
         {!canReview && (
           <div className="mt-6 rounded-xl bg-white border border-gray-100 p-5 text-sm text-gray-700">
-            Trạng thái hiện tại là "{COMPLAINT_TAG_META[tag].label}". Bạn chỉ có thể đánh giá khi trạng thái là "Đã giải quyết", "Đã hoàn tiền" hoặc "Đã từ chối".
+            Trạng thái hiện tại là "{COMPLAINT_TAG_META[tag].label}". Bạn chỉ có thể đánh giá khi khiếu nại đã được xử lý xong (Đã giải quyết, Đã hoàn tiền hoặc Đã từ chối).
           </div>
         )}
 
-        <div className="mt-6 rounded-xl bg-white shadow border border-gray-100 p-6 space-y-5">
-          <div>
-            <label className="text-sm font-medium text-gray-900">Mức độ hài lòng</label>
-            <select
-              value={rating}
-              onChange={(e) => setRating(parseInt(e.target.value, 10) || 5)}
-              className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
-              disabled={!canReview}
-            >
-              {[5,4,3,2,1].map((n) => (
-                <option key={n} value={n}>{n} sao</option>
-              ))}
-            </select>
-          </div>
+        {canReview && (
+          <div className="mt-6 rounded-xl bg-white shadow border border-gray-100 p-6 space-y-5">
+            <div>
+              <label className="text-sm font-medium text-gray-900">Mức độ hài lòng</label>
+              <select
+                value={rating}
+                onChange={(e) => setRating(parseInt(e.target.value, 10) || 5)}
+                className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+              >
+                {[5,4,3,2,1].map((n) => (
+                  <option key={n} value={n}>{n} sao</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-900">Nhận xét</label>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={6}
-              className="mt-2 w-full rounded-lg border px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-200"
-              placeholder="Nội dung đánh giá..."
-              disabled={!canReview}
-            />
-            {error && <div className="mt-1 text-sm text-red-600">{error}</div>}
-          </div>
+            <div>
+              <label className="text-sm font-medium text-gray-900">Nhận xét</label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={6}
+                className="mt-2 w-full rounded-lg border px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-200"
+                placeholder="Nội dung đánh giá..."
+              />
+              {error && <div className="mt-1 text-sm text-red-600">{error}</div>}
+            </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              disabled={!canReview}
-              onClick={save}
-              className={`rounded-lg px-5 py-2.5 text-sm font-semibold text-white ${canReview ? 'bg-gray-900 hover:bg-black' : 'bg-gray-300'}`}
-            >
-              Lưu đánh giá
-            </button>
-            <button type="button" onClick={() => navigate(-1)} className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Hủy</button>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={save}
+                className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-gray-900 hover:bg-black"
+              >
+                Lưu đánh giá
+              </button>
+              <button type="button" onClick={() => navigate(-1)} className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Hủy</button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

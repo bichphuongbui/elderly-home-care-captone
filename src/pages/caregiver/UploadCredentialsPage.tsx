@@ -81,8 +81,6 @@ const UploadCredentialsPage: React.FC = () => {
     educationLevel: '', // 'trung-cap' | 'cao-dang' | 'dai-hoc' | 'sau-dai-hoc'
     graduationStatus: '', // 'graduated' | 'not_graduated' (only for 'dai-hoc')
     graduationCertificate: '', // base64 (optional, required if graduated & university)
-    expectedSalaryMin: '' as any, // number-like string to allow empty input
-    expectedSalaryMax: '' as any,
   });
 
   // Structured entries to align with Certificates & Skills page
@@ -324,20 +322,6 @@ const UploadCredentialsPage: React.FC = () => {
 
     if (professionalInfo.yearsOfExperience > 50) {
       alert('Số năm kinh nghiệm không hợp lý (quá 50 năm).');
-      setActiveSection('professional');
-      return;
-    }
-
-    // Validate expected salary range (required)
-    const minSalary = Number(professionalInfo.expectedSalaryMin);
-    const maxSalary = Number(professionalInfo.expectedSalaryMax);
-    if (!minSalary || !maxSalary || minSalary <= 0 || maxSalary <= 0) {
-      alert('Vui lòng nhập khoảng lương mong muốn (tối thiểu và tối đa).');
-      setActiveSection('professional');
-      return;
-    }
-    if (minSalary > maxSalary) {
-      alert('Khoảng lương không hợp lệ: mức tối thiểu lớn hơn mức tối đa.');
       setActiveSection('professional');
       return;
     }
@@ -1189,30 +1173,6 @@ const UploadCredentialsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Expected salary range */}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Khoảng mức lương mong muốn (bắt buộc) - VNĐ/giờ</label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="number"
-                          min="0"
-                          value={professionalInfo.expectedSalaryMin}
-                          onChange={(e) => setProfessionalInfo(prev => ({ ...prev, expectedSalaryMin: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="Tối thiểu (VNĐ)"
-                          required
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={professionalInfo.expectedSalaryMax}
-                          onChange={(e) => setProfessionalInfo(prev => ({ ...prev, expectedSalaryMax: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="Tối đa (VNĐ)"
-                          required
-                        />
-                      </div>
-                    </div>
                     {/* Structured Certificates like Certificates page (no admin approve here; only draft) */}
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Bằng cấp, chứng chỉ liên quan</label>

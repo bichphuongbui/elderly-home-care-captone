@@ -43,7 +43,7 @@ const CallFeedbackPage: React.FC = () => {
         <div className="rounded-xl bg-white shadow-md border border-gray-100 p-6 space-y-6">
           {/* Caregiver info */}
           <div>
-            <div className="text-xs text-gray-500">Tên người chăm sóc</div>
+            <div className="text-xs text-gray-500">Tên người thuê</div>
             <div className="mt-1 text-lg font-semibold text-gray-900">{caregiverName}</div>
           </div>
 

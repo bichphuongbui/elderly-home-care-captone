@@ -67,7 +67,7 @@ const ComplaintPage: React.FC = () => {
               <div className="font-medium text-gray-900">#{bookingInfo.id}</div>
             </div>
             <div>
-              <div className="text-gray-500">Tên Careseeker</div>
+              <div className="text-gray-500">Tên Người thuê</div>
               <div className="font-medium text-gray-900">{bookingInfo.careseekerName}</div>
             </div>
             <div>

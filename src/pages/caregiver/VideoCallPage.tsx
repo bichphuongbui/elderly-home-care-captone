@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { FiMic, FiMicOff, FiVideo, FiVideoOff, FiMonitor, FiPhone } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,64 @@ const VideoCallPage: React.FC = () => {
 	]);
 	const [input, setInput] = useState<string>('');
 	const listRef = useRef<HTMLDivElement | null>(null);
+	const localVideoRef = useRef<HTMLVideoElement | null>(null);
+	const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+	const streamRef = useRef<MediaStream | null>(null);
+
+	// Start camera when component mounts
+	useEffect(() => {
+		const startCamera = async () => {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({ 
+					video: true, 
+					audio: true 
+				});
+				streamRef.current = stream;
+				
+				// Display local video
+				if (localVideoRef.current) {
+					localVideoRef.current.srcObject = stream;
+				}
+				
+				// Simulate remote video (you can replace this with actual remote stream)
+				if (remoteVideoRef.current) {
+					remoteVideoRef.current.srcObject = stream;
+				}
+			} catch (error) {
+				console.error('Error accessing camera:', error);
+				alert('Không thể truy cập camera. Vui lòng cho phép truy cập camera trong trình duyệt.');
+			}
+		};
+
+		startCamera();
+
+		// Cleanup function
+		return () => {
+			if (streamRef.current) {
+				streamRef.current.getTracks().forEach(track => track.stop());
+			}
+		};
+	}, []);
+
+	// Toggle camera
+	useEffect(() => {
+		if (streamRef.current) {
+			const videoTrack = streamRef.current.getVideoTracks()[0];
+			if (videoTrack) {
+				videoTrack.enabled = isCamOn;
+			}
+		}
+	}, [isCamOn]);
+
+	// Toggle microphone
+	useEffect(() => {
+		if (streamRef.current) {
+			const audioTrack = streamRef.current.getAudioTracks()[0];
+			if (audioTrack) {
+				audioTrack.enabled = isMicOn;
+			}
+		}
+	}, [isMicOn]);
 
 	const appendMessage = () => {
 		const text = input.trim();
@@ -43,20 +101,42 @@ const VideoCallPage: React.FC = () => {
 				<div className="mt-6 grid lg:grid-cols-3 gap-4">
 					{/* Video area (70%) */}
 					<div className="lg:col-span-2 rounded-2xl bg-black relative overflow-hidden">
-						{/* Main video placeholder */}
-						<div className="aspect-video w-full bg-gray-900 flex items-center justify-center text-gray-400">Video chính</div>
+						{/* Main video - Remote stream */}
+						<video 
+							ref={remoteVideoRef}
+							autoPlay 
+							playsInline
+							muted
+							className="aspect-video w-full bg-gray-900 object-cover"
+						/>
+						{!isCamOn && (
+							<div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-gray-400">
+								Camera đã tắt
+							</div>
+						)}
+						
 						{/* Small self camera */}
-						<div className="absolute bottom-4 right-4 w-40 h-28 bg-gray-700/80 rounded-lg flex items-center justify-center text-gray-200">Camera bạn</div>
+						<div className="absolute bottom-20 right-4 w-40 h-28 bg-gray-700 rounded-lg overflow-hidden">
+							<video 
+								ref={localVideoRef}
+								autoPlay 
+								playsInline
+								muted
+								className="w-full h-full object-cover"
+							/>
+							{!isCamOn && (
+								<div className="absolute inset-0 bg-gray-700 flex items-center justify-center text-gray-200 text-xs">
+									Camera tắt
+								</div>
+							)}
+						</div>
 
 						{/* Control bar */}
 						<div className="absolute inset-x-0 bottom-0 p-4 bg-black/40 backdrop-blur-sm">
 							<div className="flex flex-wrap items-center gap-2">
 								{controlBtn(isMicOn, () => setIsMicOn(true), () => setIsMicOn(false), FiMic, FiMicOff, 'Mic bật', 'Mic tắt', 'bg-blue-600')}
 								{controlBtn(isCamOn, () => setIsCamOn(true), () => setIsCamOn(false), FiVideo, FiVideoOff, 'Camera bật', 'Camera tắt', 'bg-blue-600')}
-								<button className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:opacity-90">
-									<FiMonitor />
-									Chia sẻ màn hình
-								</button>
+								
 								<button onClick={() => navigate('/care-giver/call-feedback')} className="ml-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700">
 									<FiPhone />
 									Kết thúc cuộc gọi

@@ -37,10 +37,10 @@ type WeeklyAvailability = Record<DayKey, DailyAvailability>;
 const AVAIL_STORAGE_KEY = 'caregiver_availability_v1';
 
 const mockBookings: BookingItem[] = [
-  { id: 'BK001', careSeekerName: 'Cụ Nguyễn Văn A', date: '2025-09-22', startTime: '09:00', endTime: '11:00', status: 'upcoming', location: 'Q.1, TP.HCM' },
-  { id: 'BK002', careSeekerName: 'Bà Trần Thị B', date: '2025-09-23', startTime: '14:00', endTime: '17:00', status: 'ongoing', location: 'Q.3, TP.HCM' },
-  { id: 'BK003', careSeekerName: 'Ông Lê Văn C', date: '2025-09-24', startTime: '08:00', endTime: '10:00', status: 'completed', location: 'Q.5, TP.HCM' },
-  { id: 'BK006', careSeekerName: 'Cụ Võ Văn F', date: '2025-09-25', startTime: '13:00', endTime: '16:00', status: 'upcoming', location: 'Q.2, TP.HCM' },
+  { id: 'BK001', careSeekerName: 'Cụ Nguyễn Văn A', date: '2025-10-21', startTime: '09:00', endTime: '11:00', status: 'upcoming', location: 'Q.1, TP.HCM' },
+  { id: 'BK002', careSeekerName: 'Bà Trần Thị B', date: '2025-10-20', startTime: '14:00', endTime: '17:00', status: 'ongoing', location: 'Q.3, TP.HCM' },
+  { id: 'BK003', careSeekerName: 'Ông Lê Văn C', date: '2025-10-18', startTime: '08:00', endTime: '10:00', status: 'completed', location: 'Q.5, TP.HCM' },
+  { id: 'BK006', careSeekerName: 'Cụ Võ Văn F', date: '2025-10-23', startTime: '13:00', endTime: '16:00', status: 'upcoming', location: 'Q.2, TP.HCM' },
 ];
 
 const statusStyles: Record<BookingStatus, string> = {
