@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {FiPaperclip, FiSmile, FiSend, FiSearch, FiVideo} from 'react-icons/fi';
+import {FiPaperclip, FiSmile, FiSend, FiSearch} from 'react-icons/fi';
 
 interface Message {
   id: string;
@@ -56,7 +55,6 @@ const initialConversations: Conversation[] = [
 ];
 
 const ChatPage: React.FC = () => {
-  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedConversationId, setSelectedConversationId] = useState<string>(initialConversations[0]?.id || '');
   const [draftMessage, setDraftMessage] = useState<string>('');
@@ -155,17 +153,6 @@ const ChatPage: React.FC = () => {
                   
                 </div>
               </div>
-              
-              {/* Video Call Button */}
-              {selectedConversation && (
-                <button
-                  onClick={() => navigate('/care-giver/video-call')}
-                  className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                  title="Bắt đầu video call"
-                >
-                  <FiVideo className="text-xl" />
-                </button>
-              )}
             </div>
 
             

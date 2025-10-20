@@ -1,9 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 type TimeRange = { start: string; end: string };
 type DailyAvailability = { enabled: boolean; ranges: TimeRange[] };
 type WeeklyAvailability = Record<DayKey, DailyAvailability>;
+
+type BookingItem = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+};
 
 const DAY_LABEL: Record<DayKey, string> = {
   mon: 'Thứ 2',
@@ -17,23 +25,6 @@ const DAY_LABEL: Record<DayKey, string> = {
 
 const DEFAULT_RANGE: TimeRange = { start: '08:00', end: '17:00' };
 
-// Helper functions for week navigation
-const getStartOfWeek = (date: Date) => {
-  const d = new Date(date);
-  const day = (d.getDay() + 6) % 7; // Monday-based
-  d.setDate(d.getDate() - day);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const formatWeekLabel = (startDate: Date) => {
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
-  
-  const formatDate = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
-  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-};
-
 const buildDefault = (): WeeklyAvailability => ({
   mon: { enabled: true, ranges: [DEFAULT_RANGE] },
   tue: { enabled: true, ranges: [DEFAULT_RANGE] },
@@ -45,35 +36,106 @@ const buildDefault = (): WeeklyAvailability => ({
 });
 
 const STORAGE_KEY = 'caregiver_availability_v1';
+const FIRST_TIME_KEY = 'caregiver_availability_set';
+
+// Mock bookings data for demo
+const mockBookings: BookingItem[] = [
+  { id: 'BK001', date: '2025-10-28', startTime: '08:00', endTime: '12:00' },
+  { id: 'BK005', date: '2025-10-21', startTime: '07:30', endTime: '12:30' },
+  { id: 'BK007', date: '2025-10-23', startTime: '09:00', endTime: '12:00' },
+  { id: 'BK008', date: '2025-10-24', startTime: '10:00', endTime: '14:00' },
+  { id: 'BK002', date: '2025-10-21', startTime: '14:00', endTime: '17:00' },
+];
+
+// Get actual bookings from localStorage or API - not mock data
+const getUserBookings = (): BookingItem[] => {
+  try {
+    // In production, this would fetch from API based on current user ID
+    // For now, check if there are any bookings in localStorage
+    const stored = localStorage.getItem('user_bookings');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // Initialize with mock data if no bookings exist yet
+    localStorage.setItem('user_bookings', JSON.stringify(mockBookings));
+    return mockBookings;
+  } catch {
+    return mockBookings;
+  }
+};
 
 const AvailabilityPage: React.FC = () => {
-  const [currentWeek, setCurrentWeek] = useState<Date>(() => getStartOfWeek(new Date()));
+  const navigate = useNavigate();
   const [availability, setAvailability] = useState<WeeklyAvailability>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) return JSON.parse(saved);
     } catch {}
-    // Auto: rảnh nguyên tuần nếu chưa set
     return buildDefault();
   });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(availability));
-  }, [availability]);
+  const [conflicts, setConflicts] = useState<Array<{ day: string; range: string; booking: string }>>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const weekLabel = useMemo(() => formatWeekLabel(currentWeek), [currentWeek]);
-
-  const goToWeek = (direction: 'prev' | 'next' | 'current') => {
-    if (direction === 'current') {
-      setCurrentWeek(getStartOfWeek(new Date()));
-    } else {
-      const newWeek = new Date(currentWeek);
-      newWeek.setDate(currentWeek.getDate() + (direction === 'next' ? 7 : -7));
-      setCurrentWeek(newWeek);
-    }
-  };
+  const isFirstTime = !localStorage.getItem(FIRST_TIME_KEY);
 
   const dayKeys = useMemo(() => Object.keys(DAY_LABEL) as DayKey[], []);
+
+  // Check for conflicts with existing bookings
+  const checkConflicts = (newAvailability: WeeklyAvailability): Array<{ day: string; range: string; booking: string }> => {
+    const conflictList: Array<{ day: string; range: string; booking: string }> = [];
+    const dayKeyMap: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' };
+
+    // Get user's actual bookings (not mock data)
+    const userBookings = getUserBookings();
+    
+    // Get all bookings from now onwards
+    const now = new Date();
+    const futureBookings = userBookings.filter((b: BookingItem) => new Date(b.date) >= now);
+
+    futureBookings.forEach((booking: BookingItem) => {
+      const bookingDate = new Date(booking.date);
+      const dayOfWeek = bookingDate.getDay();
+      const dayKey = dayKeyMap[dayOfWeek];
+
+      const dayAvail = newAvailability[dayKey];
+      if (!dayAvail.enabled) {
+        // Day is marked as not available, but there's a booking
+        conflictList.push({
+          day: DAY_LABEL[dayKey],
+          range: `${booking.startTime}-${booking.endTime}`,
+          booking: `${booking.id} vào ${bookingDate.toLocaleDateString('vi-VN')}`
+        });
+        return;
+      }
+
+      // Check if booking time falls within any availability range
+      const bookingStart = timeToMinutes(booking.startTime);
+      const bookingEnd = timeToMinutes(booking.endTime);
+
+      const isWithinAvailability = dayAvail.ranges.some(range => {
+        const rangeStart = timeToMinutes(range.start);
+        const rangeEnd = timeToMinutes(range.end);
+        return bookingStart >= rangeStart && bookingEnd <= rangeEnd;
+      });
+
+      if (!isWithinAvailability) {
+        conflictList.push({
+          day: DAY_LABEL[dayKey],
+          range: `${booking.startTime}-${booking.endTime}`,
+          booking: `${booking.id} vào ${bookingDate.toLocaleDateString('vi-VN')}`
+        });
+      }
+    });
+
+    return conflictList;
+  };
+
+  const timeToMinutes = (time: string): number => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
 
   const addRange = (day: DayKey) => {
     setAvailability(prev => ({
@@ -108,42 +170,78 @@ const AvailabilityPage: React.FC = () => {
 
   const resetAll = () => setAvailability(buildDefault());
 
+  const handleSave = () => {
+    const conflictList = checkConflicts(availability);
+    
+    if (conflictList.length > 0) {
+      setConflicts(conflictList);
+      return;
+    }
+
+    setIsSaving(true);
+    // Save to localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(availability));
+    localStorage.setItem(FIRST_TIME_KEY, 'true');
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      setShowSuccess(true);
+      
+      // If first time, redirect to dashboard
+      if (isFirstTime) {
+        setTimeout(() => {
+          navigate('/care-giver/dashboard');
+        }, 1500);
+      } else {
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    }, 500);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Thiết lập lịch rảnh trong tuần</h1>
-            <p className="mt-1 text-sm text-gray-600">Nếu bạn không thiết lập, hệ thống mặc định rảnh cả tuần (08:00–17:00).</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isFirstTime ? 'Thiết lập lịch rảnh lần đầu' : 'Cập nhật lịch rảnh trong tuần'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              {isFirstTime 
+                ? 'Vui lòng thiết lập lịch rảnh của bạn. Lịch này sẽ áp dụng cho tất cả các tuần tiếp theo.'
+                : 'Lịch rảnh áp dụng cho tất cả các tuần. Thay đổi sẽ được kiểm tra xung đột với lịch thuê hiện tại.'}
+            </p>
           </div>
         </div>
 
-        {/* Week Navigation */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg border border-gray-200">
-          <button 
-            onClick={() => goToWeek('prev')}
-            className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg border border-gray-200"
-          >
-            ← Tuần trước
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-semibold text-gray-900">{weekLabel}</span>
-            <button 
-              onClick={() => goToWeek('current')}
-              className="px-3 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200"
+        {/* Success message */}
+        {showSuccess && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 font-medium">
+              ✓ Đã lưu lịch rảnh thành công! {isFirstTime && 'Đang chuyển đến trang chủ...'}
+            </p>
+          </div>
+        )}
+
+        {/* Conflict warnings */}
+        {conflicts.length > 0 && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 font-medium mb-2">⚠ Không thể lưu do xung đột với lịch thuê hiện tại:</p>
+            <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+              {conflicts.map((c, i) => (
+                <li key={i}>
+                  {c.day}: Khung giờ {c.range} bị trùng với lịch {c.booking}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setConflicts([])}
+              className="mt-3 text-sm text-red-600 hover:text-red-700 underline"
             >
-              Tuần này
+              Đóng cảnh báo và chỉnh sửa lại
             </button>
           </div>
-          
-          <button 
-            onClick={() => goToWeek('next')}
-            className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg border border-gray-200"
-          >
-            Tuần sau →
-          </button>
-        </div>
+        )}
 
         <div className="mt-6 space-y-4">
           {dayKeys.map((day) => (
@@ -200,8 +298,16 @@ const AvailabilityPage: React.FC = () => {
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button onClick={resetAll} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Đặt lại mặc định</button>
-          <button onClick={() => alert('Đã lưu')} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Lưu thay đổi</button>
+          <button onClick={resetAll} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            Đặt lại mặc định
+          </button>
+          <button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Đang lưu...' : isFirstTime ? 'Hoàn tất và tiếp tục' : 'Lưu thay đổi'}
+          </button>
         </div>
       </div>
     </div>

@@ -8,8 +8,27 @@ const CareGiverDashboardPage: React.FC = () => {
   // Lấy thông tin user từ localStorage và làm tươi từ API
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState<boolean>(true);
+  const [checkingAvailability, setCheckingAvailability] = useState<boolean>(true);
 
   useEffect(() => {
+    // Small delay to ensure localStorage is updated after redirect from availability page
+    const checkAvailability = setTimeout(() => {
+      const availabilitySet = localStorage.getItem('caregiver_availability_set');
+      if (!availabilitySet) {
+        // Redirect to availability setup page
+        navigate('/care-giver/availability');
+        return;
+      }
+      setCheckingAvailability(false);
+    }, 100);
+
+    return () => clearTimeout(checkAvailability);
+  }, [navigate]);
+
+  useEffect(() => {
+    // Don't load user data until availability check is done
+    if (checkingAvailability) return;
+
     const readUser = () => {
       try {
         const stored = localStorage.getItem('current_user');
@@ -45,7 +64,7 @@ const CareGiverDashboardPage: React.FC = () => {
       setLoadingUser(false);
     };
     init();
-  }, []);
+  }, [checkingAvailability]);
 
   const caregiverName = useMemo(() => {
     return currentUser?.fullName || currentUser?.name || currentUser?.username || "Người chăm sóc";
@@ -167,6 +186,18 @@ const CareGiverDashboardPage: React.FC = () => {
   
   // Notification dropdown state
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Show loading while checking availability
+  if (checkingAvailability) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -311,11 +342,6 @@ const CareGiverDashboardPage: React.FC = () => {
                     <div className="text-xs text-gray-600">
                       <span className="font-medium">{dayEvents.length}</span> lịch hẹn
                     </div>
-                    {dayEvents.length > 0 && (
-                      <div className="text-xs text-gray-600">
-                        <span className="font-medium">{dayEvents.length * 2}</span> nhiệm vụ
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
