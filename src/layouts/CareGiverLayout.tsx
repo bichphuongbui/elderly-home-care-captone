@@ -34,7 +34,7 @@ const CareGiverLayout: React.FC<CareGiverLayoutProps> = ({ children }) => {
     { icon: FiAward, label: 'Chứng chỉ & Kỹ năng', path: '/care-giver/certificates' },
     { icon: FiCalendar, label: 'Quản lý lịch làm việc', path: '/care-giver/schedule' },
     { icon: FiBookOpen, label: 'Quản lý yêu cầu đặt lịch', path: '/care-giver/bookings' },
-    // { icon: FiVideo, label: 'Yêu cầu Video Call', path: '/care-giver/video-requests' },
+    { icon: FiClock, label: 'Yêu cầu Video Call', path: '/care-giver/video-requests' },
     { icon: FiStar, label: 'Đánh giá từ Care Seeker', path: '/care-giver/reviews' },
     { icon: FiMessageCircle, label: 'Trò chuyện', path: '/care-giver/chat' },
     { icon: FiAlertTriangle, label: 'Khiếu nại', path: '/care-giver/complaint' },

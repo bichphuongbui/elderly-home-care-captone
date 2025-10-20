@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type VideoStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+type VideoStatus = 'pending' | 'accepted' | 'rejected';
 
 type VideoRequest = {
   id: string;
@@ -10,40 +10,35 @@ type VideoRequest = {
   time: string; // ISO or readable
   note: string;
   status: VideoStatus;
-  proposal?: { reason: string; date: string; start: string; end: string };
+  rejectionReason?: string;
 };
 
 const STATUS_META: Record<VideoStatus, { label: string; color: string; bar: string }> = {
   pending: { label: 'Chờ phản hồi', color: 'bg-amber-50 text-amber-700 ring-amber-600/20', bar: 'bg-amber-400' },
-  responded: { label: 'Đã phản hồi', color: 'bg-blue-50 text-blue-700 ring-blue-600/20', bar: 'bg-blue-500' },
   accepted: { label: 'Đã chấp nhận', color: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', bar: 'bg-emerald-500' },
   rejected: { label: 'Đã từ chối', color: 'bg-red-50 text-red-700 ring-red-600/20', bar: 'bg-red-500' },
 };
 
 const TABS: { key: VideoStatus; title: string }[] = [
   { key: 'pending', title: 'Chờ phản hồi' },
-  { key: 'responded', title: 'Đã phản hồi' },
   { key: 'accepted', title: 'Đã chấp nhận' },
   { key: 'rejected', title: 'Đã từ chối' },
 ];
 
 const mockRequests: VideoRequest[] = [
-  { id: 'VR001', customerName: 'Nguyễn Minh', bookingId: 'BK005', time: '2025-09-21 07:30', note: 'Muốn trao đổi thêm nội dung chăm sóc', status: 'pending' },
-  // Removed responded request for BK007 as per request
-  { id: 'VR003', customerName: 'Lê Văn C', bookingId: 'BK006', time: '2025-09-16 08:00', note: 'Xác nhận trao đổi trước lịch', status: 'accepted' },
-  { id: 'VR004', customerName: 'Phạm Thu D', bookingId: 'BK008', time: '2025-09-23 10:30', note: 'Không phù hợp thời gian hiện tại', status: 'rejected' },
+  { id: 'VR001', customerName: 'Bà Nguyễn Thị E', bookingId: 'BK005', time: '2025-10-29 07:30', note: 'Yêu cầu video call trước để trao đổi chi tiết về dịch vụ đi chợ nấu ăn', status: 'pending' },
+  { id: 'VR002', customerName: 'Cụ Trần Văn L', bookingId: 'BK011', time: '2025-10-30 08:30', note: 'Cần video call để đánh giá tình trạng sức khỏe trước khi đặt lịch chăm sóc sau phẫu thuật', status: 'pending' },
+  { id: 'VR003', customerName: 'Cụ Võ Văn F', bookingId: 'BK006', time: '2025-10-16 08:00', note: 'Xác nhận trao đổi trước lịch', status: 'accepted' },
+  { id: 'VR004', customerName: 'Bà Lý Thị H', bookingId: 'BK008', time: '2025-10-24 10:30', note: 'Cần video call để đánh giá tình trạng sức khỏe', status: 'rejected', rejectionReason: 'Không phù hợp thời gian, đang có lịch hẹn khác trong khung giờ này' },
 ];
 
 const VideoRequestPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<VideoStatus>('pending');
   const [items, setItems] = useState<VideoRequest[]>(mockRequests);
   const navigate = useNavigate();
-  const [showProposal, setShowProposal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
-  const [date, setDate] = useState('');
-  const [start, setStart] = useState('');
-  const [end,   setEnd] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const filtered = useMemo(() => items.filter(i => i.status === activeTab), [items, activeTab]);
 
@@ -57,24 +52,29 @@ const VideoRequestPage: React.FC = () => {
     }));
   };
 
-  const openProposal = (id: string) => {
-    setEditingId(id);
-    setReason('');
-    setDate('');
-    setStart('');
-    setEnd('');
-    setShowProposal(true);
+  const openRejectModal = (id: string) => {
+    setRejectingId(id);
+    setRejectionReason('');
+    setShowRejectModal(true);
   };
 
-  const saveProposal = () => {
-    if (!editingId) return;
-    setItems(prev => prev.map(v => (
-      v.id === editingId
-        ? { ...v, status: 'responded', proposal: { reason: reason.trim(), date, start, end } }
+  const confirmReject = () => {
+    if (!rejectingId || !rejectionReason.trim()) return;
+    setItems(prev => prev.map(v => 
+      v.id === rejectingId 
+        ? { ...v, status: 'rejected', rejectionReason: rejectionReason.trim() } 
         : v
-    )));
-    setShowProposal(false);
-    setEditingId(null);
+    ));
+    try { 
+      const item = items.find(v => v.id === rejectingId);
+      if (item) {
+        localStorage.setItem(`video_status_${item.bookingId}`, 'rejected');
+        localStorage.setItem(`video_rejection_${item.bookingId}`, rejectionReason.trim());
+      }
+    } catch {}
+    setShowRejectModal(false);
+    setRejectingId(null);
+    setRejectionReason('');
   };
 
   return (
@@ -141,16 +141,14 @@ const VideoRequestPage: React.FC = () => {
                   )}
                   {r.status === 'pending' && (
                     <div className="mt-3 flex items-center justify-end gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); updateStatus(r.id, 'rejected'); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700">Từ chối</button>
-                      <button onClick={(e) => { e.stopPropagation(); openProposal(r.id); }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700">Đề nghị đổi lịch</button>
+                      <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700">Từ chối</button>
                       <button onClick={(e) => { e.stopPropagation(); updateStatus(r.id, 'accepted'); }} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700">Chấp nhận</button>
                     </div>
                   )}
-                  {r.status === 'responded' && r.proposal && (
+                  {r.status === 'rejected' && r.rejectionReason && (
                     <div className="mt-3 text-xs text-gray-700 text-left">
-                      <div className="font-medium text-gray-900">Đề nghị đổi lịch:</div>
-                      <div>Lý do: {r.proposal.reason || '—'}</div>
-                      <div>Ngày: {r.proposal.date || '—'} • Thời gian: {r.proposal.start || '—'} – {r.proposal.end || '—'}</div>
+                      <div className="font-medium text-gray-900">Lý do từ chối:</div>
+                      <div className="italic text-red-600">"{r.rejectionReason}"</div>
                     </div>
                   )}
                 </div>
@@ -163,36 +161,34 @@ const VideoRequestPage: React.FC = () => {
           )}
         </div>
       </div>
-      {showProposal && (
+
+      {/* Modal từ chối */}
+      {showRejectModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-lg border border-gray-100">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-lg border border-gray-100">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Đề nghị đổi lịch video</h3>
-              <button onClick={() => setShowProposal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+              <h3 className="font-semibold text-gray-900">Lý do từ chối yêu cầu video call</h3>
+              <button onClick={() => setShowRejectModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
             </div>
-            <div className="px-5 py-5 space-y-4">
-              <div>
-                <label className="text-xs text-gray-500">Lý do</label>
-                <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-              </div>
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500">Ngày</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Từ</label>
-                  <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Đến</label>
-                  <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                </div>
-              </div>
+            <div className="px-5 py-5">
+              <label className="text-sm text-gray-700 font-medium">Vui lòng nhập lý do từ chối</label>
+              <textarea 
+                value={rejectionReason} 
+                onChange={(e) => setRejectionReason(e.target.value)} 
+                rows={4} 
+                placeholder="Ví dụ: Không phù hợp thời gian, bận việc cá nhân..."
+                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" 
+              />
             </div>
             <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
-              <button onClick={() => setShowProposal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-50">Hủy</button>
-              <button onClick={saveProposal} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Gửi đề nghị</button>
+              <button onClick={() => setShowRejectModal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-50">Hủy</button>
+              <button 
+                onClick={confirmReject} 
+                disabled={!rejectionReason.trim()}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Xác nhận từ chối
+              </button>
             </div>
           </div>
         </div>

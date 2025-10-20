@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { FiCalendar, FiClock, FiUsers, FiFileText, FiMapPin, FiDollarSign } from 'react-icons/fi';
 
 type BookingStatus = 'pending' | 'waiting' | 'in_progress' | 'completed' | 'cancelled' | 'complaint';
 type BookingType = 'instant' | 'scheduled';
@@ -197,21 +198,120 @@ const getMockBookingById = (id: string) => {
     review?: { rated: boolean; rating?: number; comment?: string; date?: string };
     override?: Partial<typeof base>;
   }> = {
-    // Chờ xác nhận - ngày xa nhất (tương lai)
-    BK001: { careseekerName: 'Cụ Nguyễn Văn A', startTime: '2025-10-28 08:00', address: 'Q.1, TP.HCM', status: 'pending', type: 'instant' },
-    BK005: { careseekerName: 'Bà Nguyễn Thị E', startTime: '2025-10-21 07:30', address: 'Q.10, TP.HCM', status: 'pending', type: 'scheduled', override: { tasks: [] } },
-    // Chờ thực hiện - ngày gần (sắp tới)
-    BK007: { careseekerName: 'Cụ Hoàng Văn G', startTime: '2025-10-23 09:00', address: 'Q.4, TP.HCM', status: 'waiting', type: 'instant' },
-    BK008: { careseekerName: 'Bà Lý Thị H', startTime: '2025-10-24 10:00', address: 'Q.6, TP.HCM', status: 'waiting', type: 'scheduled', override: { tasks: [] } },
-    // Đang thực hiện - ngày hôm nay (21/10/2025)
-    BK002: { careseekerName: 'Bà Trần Thị B', startTime: '2025-10-21 14:00', address: 'Q.3, TP.HCM', status: 'in_progress', type: 'instant' },
-    // Hoàn thành - ngày quá khứ
-    BK003: { careseekerName: 'Ông Lê Văn C', startTime: '2025-10-18 09:00', address: 'Q.5, TP.HCM', status: 'completed', type: 'instant', reportSubmitted: true, review: { rated: true, rating: 5, comment: 'Caregiver rất tận tâm, đúng giờ và nhẹ nhàng.', date: '2025-10-18 13:00' } },
-    BK006: { careseekerName: 'Cụ Võ Văn F', startTime: '2025-10-16 08:00', address: 'Q.2, TP.HCM', status: 'completed', type: 'scheduled', override: { tasks: [] }, reportSubmitted: false, review: { rated: false } },
-    // Đã hủy - ngày quá khứ
-    BK004: { careseekerName: 'Cụ Phạm Văn D', startTime: '2025-10-17 13:00', address: 'Q.7, TP.HCM', status: 'cancelled', type: 'instant', override: { tasks: [] } },
-    // Khiếu nại - ngày quá khứ
-    BK009: { careseekerName: 'Ông Phan Văn I', startTime: '2025-10-15 08:00', address: 'Q.8, TP.HCM', status: 'complaint', type: 'instant' },
+    BK001: { 
+      careseekerName: 'Cụ Nguyễn Văn A', 
+      startTime: '2025-10-28 08:00', 
+      address: 'Q.1, TP.HCM', 
+      status: 'pending', 
+      type: 'instant',
+      override: {
+        recipient: { fullName: 'Cụ Nguyễn Văn A', age: 82, gender: 'Nam', healthStatus: 'Bệnh mãn tính', medicalNotes: 'Tăng huyết áp, tiểu đường', specialNeeds: 'Chế độ ăn nhạt' }
+      }
+    },
+    BK010: { 
+      careseekerName: 'Bà Phạm Thị K', 
+      startTime: '2025-10-27 10:00', 
+      address: 'Q.9, TP.HCM', 
+      status: 'pending', 
+      type: 'instant',
+      override: {
+        recipient: { fullName: 'Bà Phạm Thị K', age: 75, gender: 'Nữ', healthStatus: 'Cần hỗ trợ vệ sinh', medicalNotes: 'Viêm khớp', specialNeeds: 'Hỗ trợ tắm rửa' }
+      }
+    },
+    BK002: { 
+      careseekerName: 'Bà Trần Thị B', 
+      startTime: '2025-10-21 14:00', 
+      address: 'Q.3, TP.HCM', 
+      status: 'in_progress', 
+      type: 'instant',
+      override: {
+        recipient: { fullName: 'Bà Trần Thị B', age: 78, gender: 'Nữ', healthStatus: 'Ổn định', medicalNotes: 'Cao huyết áp', specialNeeds: 'Giám sát uống thuốc' }
+      }
+    },
+    BK003: { 
+      careseekerName: 'Ông Lê Văn C', 
+      startTime: '2025-10-18 09:00', 
+      address: 'Q.5, TP.HCM', 
+      status: 'completed', 
+      type: 'instant', 
+      reportSubmitted: true, 
+      review: { rated: true, rating: 5, comment: 'Caregiver rất tận tâm, đúng giờ và nhẹ nhàng.', date: '2025-10-18 13:00' },
+      override: {
+        recipient: { fullName: 'Ông Lê Văn C', age: 80, gender: 'Nam', healthStatus: 'Khỏe mạnh', medicalNotes: 'Không', specialNeeds: 'Vệ sinh cá nhân' }
+      }
+    },
+    BK004: { 
+      careseekerName: 'Cụ Phạm Văn D', 
+      startTime: '2025-10-17 13:00', 
+      address: 'Q.7, TP.HCM', 
+      status: 'cancelled', 
+      type: 'instant',
+      override: {
+        recipient: { fullName: 'Cụ Phạm Văn D', age: 85, gender: 'Nam', healthStatus: 'Yếu', medicalNotes: 'Tim mạch', specialNeeds: 'Đi lại an toàn' },
+        tasks: []
+      }
+    },
+    BK009: { 
+      careseekerName: 'Ông Phan Văn I', 
+      startTime: '2025-10-15 08:00', 
+      address: 'Q.8, TP.HCM', 
+      status: 'complaint', 
+      type: 'instant',
+      override: {
+        recipient: { fullName: 'Ông Phan Văn I', age: 77, gender: 'Nam', healthStatus: 'Ổn định', medicalNotes: 'Tiểu đường', specialNeeds: 'Chăm sóc theo giờ' }
+      }
+    },
+    // Scheduled bookings
+    BK007: { 
+      careseekerName: 'Cụ Hoàng Văn G', 
+      startTime: '2025-10-23 09:00', 
+      address: 'Q.4, TP.HCM', 
+      status: 'waiting', 
+      type: 'scheduled',
+      override: {
+        recipient: { fullName: 'Cụ Hoàng Văn G', age: 79, gender: 'Nam', healthStatus: 'Cần vận động', medicalNotes: 'Thoái hóa khớp', specialNeeds: 'Vận động trị liệu' },
+        appointment: { date: '2025-10-22', startTime: '15:00', durationHours: 1, participants: ['Con trai'], note: 'Hỗ trợ tập thể dục nhẹ nhàng' },
+        tasks: []
+      }
+    },
+    BK012: { 
+      careseekerName: 'Bà Lê Thị M', 
+      startTime: '2025-10-25 10:00', 
+      address: 'Q.12, TP.HCM', 
+      status: 'waiting', 
+      type: 'scheduled',
+      override: {
+        recipient: { fullName: 'Bà Lê Thị M', age: 81, gender: 'Nữ', healthStatus: 'Alzheimer giai đoạn đầu', medicalNotes: 'Suy giảm trí nhớ', specialNeeds: 'Chăm sóc đặc biệt' },
+        appointment: { date: '2025-10-24', startTime: '14:00', durationHours: 1.5, participants: ['Con gái', 'Cháu nội'], note: 'Chăm sóc bệnh Alzheimer, cần kiên nhẫn và nhẹ nhàng' },
+        tasks: []
+      }
+    },
+    BK008: { 
+      careseekerName: 'Bà Lý Thị H', 
+      startTime: '2025-10-24 10:30', 
+      address: 'Q.6, TP.HCM', 
+      status: 'waiting', 
+      type: 'scheduled',
+      override: {
+        recipient: { fullName: 'Bà Lý Thị H', age: 76, gender: 'Nữ', healthStatus: 'Có vết thương', medicalNotes: 'Loét chân', specialNeeds: 'Chăm sóc vết thương' },
+        appointment: { date: '2025-10-23', startTime: '16:00', durationHours: 1, participants: ['Con rể'], note: 'Chăm sóc vết thương cần chuyên môn' },
+        tasks: []
+      }
+    },
+    BK006: { 
+      careseekerName: 'Cụ Võ Văn F', 
+      startTime: '2025-10-16 08:00', 
+      address: 'Q.2, TP.HCM', 
+      status: 'completed', 
+      type: 'scheduled',
+      override: {
+        recipient: { fullName: 'Cụ Võ Văn F', age: 83, gender: 'Nam', healthStatus: 'Tiểu đường', medicalNotes: 'Đường huyết cao', specialNeeds: 'Theo dõi sức khỏe' },
+        appointment: { date: '2025-10-15', startTime: '14:00', durationHours: 1, participants: ['Vợ'], note: 'Theo dõi đường huyết và chế độ ăn' },
+        tasks: []
+      },
+      reportSubmitted: false, 
+      review: { rated: false }
+    },
   };
 
   const v = byId[id] ?? { careseekerName: 'Careseeker', startTime: '2025-10-28 08:00', address: '—', status: 'pending' as BookingStatus, type: 'instant' as BookingType };
@@ -261,13 +361,6 @@ const BookingDetailPage: React.FC = () => {
   };
 
   const { start: bookingStart, end: bookingEnd } = parseBookingTimeRange(booking.service.time);
-
-  const VIDEO_BADGE_META: Record<'pending' | 'responded' | 'accepted' | 'rejected', { label: string; color: string }> = {
-    pending: { label: 'Chờ phản hồi', color: 'bg-gray-100 text-gray-700 ring-gray-500/20' },
-    responded: { label: 'Đã phản hồi', color: 'bg-blue-50 text-blue-700 ring-blue-600/20' },
-    accepted: { label: 'Đã chấp nhận', color: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
-    rejected: { label: 'Đã từ chối', color: 'bg-red-50 text-red-700 ring-red-600/20' },
-  };
 
   const initialTasks: CareTask[] = useMemo(() => {
     const list = (booking as any).tasks as CareTask[] | undefined;
@@ -416,27 +509,50 @@ const BookingDetailPage: React.FC = () => {
           </div>
 
           <div className="px-6 py-6 space-y-6">
-            {/* Hồ sơ bệnh nhân */}
+            {/* Hồ sơ bệnh nhân - Thông tin cơ bản */}
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Hồ sơ bệnh nhân</h2>
-              <div className="mt-4 grid gap-5">
-                {/* 1. Tổng quan */}
-                <div className="rounded-xl border border-gray-100 p-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">1) Tổng quan</h3>
+              <h2 className="text-base font-semibold text-gray-900">Thông tin người cần chăm sóc</h2>
+              <div className="mt-4 rounded-xl border border-gray-100 p-4">
+                <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-500">Họ tên</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.fullName}</div>
                   </div>
+                  <div>
+                    <div className="text-gray-500">Tuổi</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.age} tuổi</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500">Giới tính</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.gender}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500">Tình trạng sức khỏe</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.healthStatus}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-gray-500">Ghi chú y tế</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.medicalNotes}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-gray-500">Nhu cầu đặc biệt</div>
+                    <div className="font-medium text-gray-900">{booking.recipient.specialNeeds}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Hồ sơ bệnh nhân chi tiết - Hiển thị cho cả instant và scheduled */}
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Hồ sơ bệnh nhân chi tiết</h2>
+              <div className="mt-4 grid gap-5">
+                {/* 1. Tổng quan đầy đủ */}
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="font-semibold text-gray-900">1) Tổng quan</h3>
                   <div className="mt-3 grid sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-gray-500">Họ tên</div>
-                      <div className="font-medium text-gray-900">{booking.recipient.fullName}</div>
-                    </div>
                     <div>
                       <div className="text-gray-500">Ngày sinh</div>
                       <div className="font-medium text-gray-900">{new Date((booking as any).patientProfile.overview.dob).toLocaleDateString('vi-VN')}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Giới tính</div>
-                      <div className="font-medium text-gray-900">{(booking as any).patientProfile.overview.gender}</div>
                     </div>
                     <div>
                       <div className="text-gray-500">SĐT</div>
@@ -522,95 +638,111 @@ const BookingDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Thông tin lịch hẹn chăm sóc (tuỳ theo loại) */}
-            {booking.type === 'instant' ? (
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Thông tin lịch hẹn chăm sóc (Đặt ngay)</h2>
-                <div className="mt-3 grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-gray-500">Vị trí làm việc</div>
-                    <div className="mt-1 font-medium text-gray-900">{(booking as any).jobInfo.basic.location}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Mức lương</div>
-                    <div className="mt-1 font-medium text-gray-900">{((booking as any).jobInfo.basic.wagePerHour as number).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })} / giờ</div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <div className="text-xs text-gray-500">Khung thời gian làm</div>
-                    <div className="mt-1 font-medium text-gray-900">
-                      {bookingStart ? bookingStart.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                      {' – '}
-                      {bookingEnd ? bookingEnd.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Ngày cần chăm sóc</div>
-                    <div className="mt-1 font-medium text-gray-900">{new Date(booking.startTime.split(' ')[0]).toLocaleDateString('vi-VN')}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Khung thời gian</div>
-                    <div className="mt-1 font-medium text-gray-900">{(booking as any).jobInfo.workTime.timeSlot}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Thời gian thuê</div>
-                    <div className="mt-1 font-medium text-gray-900">{(booking as any).jobInfo.rentType}</div>
-                  </div>
-                  {/* <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* 2. Thông tin cuộc hẹn Video Call cho scheduled booking */}
+            {booking.type === 'scheduled' && (booking as any).appointment && (
+              <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <FiCalendar className="text-primary-600" />
+                  Thông tin cuộc hẹn Video Call
+                </h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <FiCalendar className="mt-1 text-gray-400" />
                     <div>
-                      <div className="text-xs text-gray-500">Ngày bắt đầu</div>
-                      <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).jobInfo.period.startDate).toLocaleDateString('vi-VN')}</div>
+                      <div className="text-sm text-gray-500">Ngày hẹn</div>
+                      <div className="font-medium text-gray-900">{new Date((booking as any).appointment.date).toLocaleDateString('vi-VN')}</div>
                     </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <FiClock className="mt-1 text-gray-400" />
                     <div>
-                      <div className="text-xs text-gray-500">Ngày kết thúc</div>
-                      <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).jobInfo.period.endDate).toLocaleDateString('vi-VN')}</div>
+                      <div className="text-sm text-gray-500">Giờ bắt đầu</div>
+                      <div className="font-medium text-gray-900">{(booking as any).appointment.startTime}</div>
                     </div>
-                  </div> */}
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Thông tin lịch hẹn chăm sóc (Đặt trước)</h2>
-                <div className="mt-1">
-                  {(() => {
-                    const vs = (booking as any).appointment.videoStatus as 'pending' | 'responded' | 'accepted' | 'rejected' | undefined;
-                    if (!vs) return null;
-                    return (
-                      <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs ring-1 ${VIDEO_BADGE_META[vs].color}`}>
-                        Trạng thái video: {VIDEO_BADGE_META[vs].label}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <div className="mt-3 grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-gray-500">Ngày hẹn</div>
-                    <div className="mt-1 font-medium text-gray-900">{new Date((booking as any).appointment.date).toLocaleDateString('vi-VN')}</div>
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Giờ bắt đầu</div>
-                    <div className="mt-1 font-medium text-gray-900">{(booking as any).appointment.startTime}</div>
+                  <div className="flex items-start gap-3">
+                    <FiClock className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Giờ kết thúc</div>
+                      <div className="font-medium text-gray-900">
+                        {(() => {
+                          const start = (booking as any).appointment.startTime;
+                          const duration = (booking as any).appointment.durationHours;
+                          if (!start || !duration) return '—';
+                          const [hh, mm] = start.split(':').map(Number);
+                          const endDate = new Date();
+                          endDate.setHours(hh, mm, 0, 0);
+                          endDate.setHours(endDate.getHours() + duration);
+                          return endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        })()}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Thời lượng</div>
-                    <div className="mt-1 font-medium text-gray-900">{(booking as any).appointment.durationHours} giờ</div>
+                  <div className="flex items-start gap-3">
+                    <FiUsers className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Người tham gia</div>
+                      <div className="font-medium text-gray-900">{((booking as any).appointment.participants as string[]).join(', ')}</div>
+                    </div>
                   </div>
-                  <div className="sm:col-span-2">
-                    <div className="text-xs text-gray-500">Thành viên tham gia</div>
-                    <div className="mt-1 font-medium text-gray-900">{((booking as any).appointment.participants as string[]).join(', ')}</div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <div className="text-xs text-gray-500">Ghi chú thêm</div>
-                    <div className="mt-1 text-gray-900">{(booking as any).appointment.note}</div>
-                  </div>
+                  {(booking as any).appointment.note && (
+                    <div className="sm:col-span-2 flex items-start gap-3">
+                      <FiFileText className="mt-1 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-500">Ghi chú</div>
+                        <div className="font-medium text-gray-900">{(booking as any).appointment.note}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            
-
+            {/* 3. Thông tin công việc và nhiệm vụ cho instant booking */}
             {booking.type === 'instant' && (
-              <div>
-                <div className="text-xs text-gray-500">Danh sách nhiệm vụ</div>
+              <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <FiCalendar className="text-primary-600" />
+                  Thông tin công việc
+                </h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <FiMapPin className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Vị trí làm việc</div>
+                      <div className="font-medium text-gray-900">{(booking as any).jobInfo.basic.location}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <FiDollarSign className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Mức lương</div>
+                      <div className="font-medium text-gray-900">{((booking as any).jobInfo.basic.wagePerHour as number).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })} / giờ</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <FiClock className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Khung thời gian làm</div>
+                      <div className="font-medium text-gray-900">
+                        {bookingStart ? bookingStart.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        {' – '}
+                        {bookingEnd ? bookingEnd.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <FiCalendar className="mt-1 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-500">Ngày cần chăm sóc</div>
+                      <div className="font-medium text-gray-900">{new Date(booking.startTime.split(' ')[0]).toLocaleDateString('vi-VN')}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Danh sách nhiệm vụ */}
+                <div className="mt-6">
+                  <h3 className="font-semibold text-gray-900">Danh sách nhiệm vụ</h3>
 
                 {tasks.length > 0 && (
                   <div className="mt-3">
@@ -649,6 +781,7 @@ const BookingDetailPage: React.FC = () => {
                     Chưa có nhiệm vụ được giao.
                   </div>
                 )}
+                </div>
               </div>
             )}
 

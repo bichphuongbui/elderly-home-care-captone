@@ -48,7 +48,7 @@ import CaregiverCertificatesSkillsPage from '../pages/caregiver/CaregiverCertifi
 import ChatPage from '../pages/caregiver/ChatPage';
 import AvailabilityPage from '../pages/caregiver/AvailabilityPage';
 import CaregiverReviewPage from '../pages/caregiver/CaregiverReviewPage';
-// import VideoRequestPage from '../pages/caregiver/VideoRequestPage';
+import VideoRequestPage from '../pages/caregiver/VideoRequestPage';
 import VideoCallPage from '../pages/caregiver/VideoCallPage';
 import CallFeedbackPage from '../pages/caregiver/CallFeedbackPage';
 import SystemFeedbackPage from '../pages/SystemFeedbackPage';
@@ -365,7 +365,7 @@ const AppRoutes: React.FC = () => {
           <Route path="training/:id" element={<CourseDetailPage />} />
           <Route path="training/:id/lesson/:lessonId" element={<LessonViewerPage />} />
           <Route path="reviews" element={<CaregiverReviewPage />} />
-          {/* <Route path="video-requests" element={<VideoRequestPage />} /> */}
+          <Route path="video-requests" element={<VideoRequestPage />} />
           <Route path="video-call" element={<VideoCallPage />} />
           <Route path="complaint" element={<ComplaintPage />} />
           <Route path="complaint-review" element={<ComplaintReviewPage />} />

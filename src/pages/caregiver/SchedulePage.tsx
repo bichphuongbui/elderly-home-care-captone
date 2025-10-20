@@ -36,12 +36,31 @@ type DailyAvailability = { enabled: boolean; ranges: TimeRange[] };
 type WeeklyAvailability = Record<DayKey, DailyAvailability>;
 const AVAIL_STORAGE_KEY = 'caregiver_availability_v1';
 
+// Mock bookings data for demo
 const mockBookings: BookingItem[] = [
-  { id: 'BK001', careSeekerName: 'Cụ Nguyễn Văn A', date: '2025-10-21', startTime: '09:00', endTime: '11:00', status: 'upcoming', location: 'Q.1, TP.HCM' },
-  { id: 'BK002', careSeekerName: 'Bà Trần Thị B', date: '2025-10-20', startTime: '14:00', endTime: '17:00', status: 'ongoing', location: 'Q.3, TP.HCM' },
+  { id: 'BK001', careSeekerName: 'Cụ Nguyễn Văn A', date: '2025-10-28', startTime: '08:00', endTime: '12:00', status: 'upcoming', location: 'Q.1, TP.HCM' },
+  { id: 'BK005', careSeekerName: 'Bà Nguyễn Thị E', date: '2025-10-21', startTime: '07:30', endTime: '12:30', status: 'upcoming', location: 'Q.10, TP.HCM' },
+  { id: 'BK007', careSeekerName: 'Cụ Hoàng Văn G', date: '2025-10-23', startTime: '09:00', endTime: '12:00', status: 'upcoming', location: 'Q.4, TP.HCM' },
+  { id: 'BK008', careSeekerName: 'Bà Lý Thị H', date: '2025-10-24', startTime: '10:00', endTime: '14:00', status: 'upcoming', location: 'Q.6, TP.HCM' },
+  { id: 'BK002', careSeekerName: 'Bà Trần Thị B', date: '2025-10-21', startTime: '14:00', endTime: '17:00', status: 'ongoing', location: 'Q.3, TP.HCM' },
   { id: 'BK003', careSeekerName: 'Ông Lê Văn C', date: '2025-10-18', startTime: '08:00', endTime: '10:00', status: 'completed', location: 'Q.5, TP.HCM' },
-  { id: 'BK006', careSeekerName: 'Cụ Võ Văn F', date: '2025-10-23', startTime: '13:00', endTime: '16:00', status: 'upcoming', location: 'Q.2, TP.HCM' },
+  { id: 'BK006', careSeekerName: 'Cụ Võ Văn F', date: '2025-10-16', startTime: '08:00', endTime: '12:00', status: 'completed', location: 'Q.2, TP.HCM' },
 ];
+
+// Get user's actual bookings from localStorage or API
+const getUserBookings = (): BookingItem[] => {
+  try {
+    const stored = localStorage.getItem('user_bookings');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // Initialize with mock data if no bookings exist
+    localStorage.setItem('user_bookings', JSON.stringify(mockBookings));
+    return mockBookings;
+  } catch {
+    return mockBookings;
+  }
+};
 
 const statusStyles: Record<BookingStatus, string> = {
   upcoming: 'bg-blue-50 text-blue-800 border-blue-200',
@@ -72,8 +91,9 @@ const SchedulePage: React.FC = () => {
   }, []);
 
   const bookingsByDate = useMemo(() => {
+    const userBookings = getUserBookings();
     const map: Record<string, BookingItem[]> = {};
-    for (const b of mockBookings) {
+    for (const b of userBookings) {
       if (!map[b.date]) map[b.date] = [];
       map[b.date].push(b);
     }
@@ -148,23 +168,29 @@ const SchedulePage: React.FC = () => {
                       <div key={i} className="absolute left-0 right-0 border-t border-gray-100" style={{ top: i * HOUR_PIXEL }} />
                     ))}
 
-                    {/* Availability blocks */}
-                    {dayAvail?.enabled && dayAvail.ranges.map((r, i) => {
-                      const [sh, sm] = r.start.split(':').map((n) => parseInt(n, 10));
-                      const [eh, em] = r.end.split(':').map((n) => parseInt(n, 10));
-                      const startMin = sh * 60 + (sm || 0);
-                      const endMin = eh * 60 + (em || 0);
-                      const top = ((startMin - DAY_START_HOUR * 60) / 60) * HOUR_PIXEL;
-                      const height = Math.max(8, ((endMin - startMin) / 60) * HOUR_PIXEL);
-                      return (
-                        <div
-                          key={i}
-                          className="absolute left-1 right-1 rounded-md border border-dashed border-emerald-300 bg-emerald-50/50"
-                          style={{ top, height }}
-                          aria-hidden
-                        />
-                      );
-                    })}
+                    {/* Availability blocks - show available time in green */}
+                    {dayAvail?.enabled ? (
+                      // Show available time ranges in green
+                      dayAvail.ranges.map((r, i) => {
+                        const [sh, sm] = r.start.split(':').map((n) => parseInt(n, 10));
+                        const [eh, em] = r.end.split(':').map((n) => parseInt(n, 10));
+                        const startMin = sh * 60 + (sm || 0);
+                        const endMin = eh * 60 + (em || 0);
+                        const top = ((startMin - DAY_START_HOUR * 60) / 60) * HOUR_PIXEL;
+                        const height = Math.max(8, ((endMin - startMin) / 60) * HOUR_PIXEL);
+                        return (
+                          <div
+                            key={i}
+                            className="absolute left-1 right-1 rounded-md border border-dashed border-emerald-300 bg-emerald-50/50"
+                            style={{ top, height }}
+                            aria-hidden
+                          />
+                        );
+                      })
+                    ) : (
+                      // If day is disabled, show entire day as unavailable (white/default)
+                      <div className="absolute inset-0 bg-white" aria-hidden />
+                    )}
 
                     {/* Events */}
                     {list.map((b) => {
