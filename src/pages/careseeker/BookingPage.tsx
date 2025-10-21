@@ -27,6 +27,13 @@ const BookingPage: React.FC = () => {
   // Form states for booking
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
+  
+  // QR Payment states
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [isQrGenerated, setIsQrGenerated] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const [bookingForm, setBookingForm] = useState({
     serviceType: 'home-care' as 'home-care' | 'video-call',
     title: '',
@@ -38,7 +45,8 @@ const BookingPage: React.FC = () => {
     notes: '',
     elderlyPersonName: '',
     elderlyPersonAge: '',
-    elderlyPersonRelationship: ''
+    elderlyPersonRelationship: '',
+    paymentMethod: 'cash' as 'cash' | 'qr'
   });
 
   useEffect(() => {
@@ -79,6 +87,12 @@ const BookingPage: React.FC = () => {
     e.preventDefault();
     if (!selectedCaregiver) return;
 
+    // Kiểm tra thanh toán QR Code
+    if (bookingForm.paymentMethod === 'qr' && !isPaymentCompleted) {
+      alert('Vui lòng hoàn thành thanh toán QR Code trước khi đặt lịch!');
+      return;
+    }
+
     try {
       const scheduledDateTime = `${bookingForm.scheduledDate}T${bookingForm.scheduledTime}:00`;
       const totalPrice = selectedCaregiver.pricePerHour * bookingForm.duration;
@@ -96,25 +110,18 @@ const BookingPage: React.FC = () => {
         price: totalPrice,
         elderlyPersonName: bookingForm.elderlyPersonName,
         elderlyPersonAge: parseInt(bookingForm.elderlyPersonAge),
-        elderlyPersonRelationship: bookingForm.elderlyPersonRelationship
+        elderlyPersonRelationship: bookingForm.elderlyPersonRelationship,
+        paymentMethod: bookingForm.paymentMethod
       });
 
-      alert('Đặt lịch thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.');
+      const paymentMessage = bookingForm.paymentMethod === 'qr' 
+        ? 'Đặt lịch thành công! Thanh toán đã được xác nhận.' 
+        : 'Đặt lịch thành công! Vui lòng thanh toán bằng tiền mặt khi hoàn thành dịch vụ.';
+      
+      alert(paymentMessage);
       setShowBookingForm(false);
       setSelectedCaregiver(null);
-      setBookingForm({
-        serviceType: 'home-care',
-        title: '',
-        description: '',
-        scheduledDate: '',
-        scheduledTime: '',
-        duration: 2,
-        address: '',
-        notes: '',
-        elderlyPersonName: '',
-        elderlyPersonAge: '',
-        elderlyPersonRelationship: ''
-      });
+      resetBookingForm();
       loadData(); // Reload bookings
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -124,6 +131,68 @@ const BookingPage: React.FC = () => {
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
+
+  // QR Payment functions
+  const handleGenerateQR = () => {
+    if (selectedCaregiver) {
+      const totalAmount = selectedCaregiver.pricePerHour * bookingForm.duration;
+      const qrData = {
+        amount: totalAmount,
+        account: '1234567890',
+        bank: 'ABC Bank',
+        content: `Booking ${bookingForm.elderlyPersonName} - ${bookingForm.scheduledDate}`,
+        bookingId: `BK${Date.now()}`
+      };
+      
+      const qrString = `bank://transfer?account=${qrData.account}&amount=${qrData.amount}&content=${encodeURIComponent(qrData.content)}`;
+      setQrCodeData(qrString);
+      setIsQrGenerated(true);
+      setPaymentStatus('pending');
+      setIsPaymentCompleted(false);
+    }
+  };
+
+  const handlePaymentConfirm = () => {
+    setIsPaymentProcessing(true);
+    setPaymentStatus('processing');
+    
+    setTimeout(() => {
+      setIsPaymentProcessing(false);
+      setPaymentStatus('completed');
+      setIsPaymentCompleted(true);
+      
+      alert('Thanh toán thành công! Booking đã được xác nhận.');
+    }, 3000);
+  };
+
+  const handlePaymentRetry = () => {
+    setPaymentStatus('pending');
+    setIsPaymentCompleted(false);
+    setIsPaymentProcessing(false);
+  };
+
+  const resetBookingForm = () => {
+    setBookingForm({
+      serviceType: 'home-care',
+      title: '',
+      description: '',
+      scheduledDate: '',
+      scheduledTime: '',
+      duration: 2,
+      address: '',
+      notes: '',
+      elderlyPersonName: '',
+      elderlyPersonAge: '',
+      elderlyPersonRelationship: '',
+      paymentMethod: 'cash'
+    });
+    // Reset QR payment states
+    setQrCodeData(null);
+    setIsQrGenerated(false);
+    setIsPaymentProcessing(false);
+    setIsPaymentCompleted(false);
+    setPaymentStatus('pending');
   };
 
   if (loading) {
@@ -397,7 +466,10 @@ const BookingPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold text-gray-900">Đặt lịch với {selectedCaregiver.name}</h2>
                   <button
-                    onClick={() => setShowBookingForm(false)}
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      resetBookingForm();
+                    }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <FiX className="h-6 w-6" />
@@ -548,6 +620,216 @@ const BookingPage: React.FC = () => {
                   />
                 </div>
 
+                {/* Phương thức thanh toán */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Phương thức thanh toán</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                      bookingForm.paymentMethod === 'cash' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cash"
+                        checked={bookingForm.paymentMethod === 'cash'}
+                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value})}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 border-2 rounded-full flex items-center justify-center">
+                          {bookingForm.paymentMethod === 'cash' && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">Tiền mặt</div>
+                          <div className="text-sm text-gray-500">Thanh toán khi hoàn thành dịch vụ</div>
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                      bookingForm.paymentMethod === 'qr' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="qr"
+                        checked={bookingForm.paymentMethod === 'qr'}
+                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value})}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 border-2 rounded-full flex items-center justify-center">
+                          {bookingForm.paymentMethod === 'qr' && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">QR Code</div>
+                          <div className="text-sm text-gray-500">Thanh toán trước khi bắt đầu</div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Thông tin thanh toán QR Code */}
+                {bookingForm.paymentMethod === 'qr' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      <span className="text-sm text-green-800 font-medium">Thanh toán QR Code</span>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border-2 border-dashed border-green-300 text-center">
+                      {!isQrGenerated ? (
+                        <>
+                          <div className="w-32 h-32 mx-auto mb-3 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-green-700 font-medium mb-2">Tạo mã QR để thanh toán</p>
+                          <p className="text-xs text-green-600 mb-3">
+                            Nhấn nút bên dưới để tạo mã QR cho giao dịch {formatPrice(selectedCaregiver.pricePerHour * bookingForm.duration)}
+                          </p>
+                          <button 
+                            type="button"
+                            onClick={handleGenerateQR}
+                            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            Tạo mã QR
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-32 h-32 mx-auto mb-3 bg-white rounded-lg border-2 border-green-200 flex items-center justify-center">
+                            <div className="w-28 h-28 bg-black rounded grid grid-cols-8 gap-0.5 p-1">
+                              {/* Mock QR Code pattern */}
+                              {Array.from({ length: 64 }).map((_, i) => (
+                                <div 
+                                  key={i} 
+                                  className={`w-full h-full ${Math.random() > 0.5 ? 'bg-white' : 'bg-black'}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Payment Status */}
+                          {paymentStatus === 'pending' && (
+                            <>
+                              <p className="text-sm text-green-700 font-medium mb-2">Mã QR đã được tạo</p>
+                              <p className="text-xs text-green-600 mb-2">
+                                Quét mã QR bằng ứng dụng ngân hàng để thanh toán {formatPrice(selectedCaregiver.pricePerHour * bookingForm.duration)}
+                              </p>
+                              <div className="text-xs text-gray-500 mb-3">
+                                <p>Ngân hàng: ABC Bank</p>
+                                <p>Tài khoản: 1234567890</p>
+                                <p>Nội dung: Booking {bookingForm.elderlyPersonName} - {bookingForm.scheduledDate}</p>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => setIsQrGenerated(false)}
+                                  className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded hover:bg-gray-600 transition-colors"
+                                >
+                                  Tạo lại
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={handlePaymentConfirm}
+                                  className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                                >
+                                  Đã thanh toán
+                                </button>
+                              </div>
+                            </>
+                          )}
+
+                          {paymentStatus === 'processing' && (
+                            <>
+                              <div className="flex items-center justify-center mb-3">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                              </div>
+                              <p className="text-sm text-green-700 font-medium mb-2">Đang xử lý thanh toán...</p>
+                              <p className="text-xs text-green-600">
+                                Vui lòng chờ trong giây lát
+                              </p>
+                            </>
+                          )}
+
+                          {paymentStatus === 'completed' && (
+                            <>
+                              <div className="flex items-center justify-center mb-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <p className="text-sm text-green-700 font-medium mb-2">Thanh toán thành công!</p>
+                              <p className="text-xs text-green-600 mb-3">
+                                Booking đã được xác nhận và sẽ được xử lý
+                              </p>
+                              <div className="text-xs text-gray-500 mb-3">
+                                <p>Mã giao dịch: TXN{Date.now().toString().slice(-8)}</p>
+                                <p>Thời gian: {new Date().toLocaleString('vi-VN')}</p>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  setIsQrGenerated(false);
+                                  setPaymentStatus('pending');
+                                  setIsPaymentCompleted(false);
+                                }}
+                                className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                              >
+                                Tạo giao dịch mới
+                              </button>
+                            </>
+                          )}
+
+                          {paymentStatus === 'failed' && (
+                            <>
+                              <div className="flex items-center justify-center mb-3">
+                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <p className="text-sm text-red-700 font-medium mb-2">Thanh toán thất bại</p>
+                              <p className="text-xs text-red-600 mb-3">
+                                Có lỗi xảy ra trong quá trình xử lý thanh toán
+                              </p>
+                              <div className="flex space-x-2">
+                                <button 
+                                  type="button"
+                                  onClick={handlePaymentRetry}
+                                  className="px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
+                                >
+                                  Thử lại
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => setIsQrGenerated(false)}
+                                  className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded hover:bg-gray-600 transition-colors"
+                                >
+                                  Tạo lại QR
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Tổng cộng:</span>
@@ -555,12 +837,20 @@ const BookingPage: React.FC = () => {
                       {formatPrice(selectedCaregiver.pricePerHour * bookingForm.duration)}
                     </span>
                   </div>
+                  {bookingForm.paymentMethod === 'cash' && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      💰 Thanh toán bằng tiền mặt khi hoàn thành dịch vụ
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowBookingForm(false)}
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      resetBookingForm();
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                   >
                     Hủy
