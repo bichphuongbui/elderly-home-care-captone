@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiCalendar, FiClock, FiVideo, FiStar, FiX, FiMapPin, FiPhone, FiMail, FiAward, FiClock as FiTimeIcon } from 'react-icons/fi';
 
 // Mock data types
@@ -59,6 +60,7 @@ interface CareTask {
 
 
 const CareSeekerDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedCaregiver, setSelectedCaregiver] = useState<Caregiver | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBookingType, setSelectedBookingType] = useState<string | null>(null);
@@ -513,29 +515,8 @@ const CareSeekerDashboardPage: React.FC = () => {
   };
 
   const handleOpenChat = (caregiver: any) => {
-    setSelectedCaregiverForChat(caregiver);
-    // Mock messages for demo
-    setChatMessages([
-      {
-        id: 1,
-        sender: 'caregiver',
-        message: 'Chào anh/chị! Tôi đã đến nhà và bắt đầu chăm sóc bác.',
-        timestamp: '09:00'
-      },
-      {
-        id: 2,
-        sender: 'user',
-        message: 'Cảm ơn cô! Bác hôm nay thế nào ạ?',
-        timestamp: '09:05'
-      },
-      {
-        id: 3,
-        sender: 'caregiver',
-        message: 'Bác khỏe mạnh, đã uống thuốc đúng giờ. Huyết áp 120/80.',
-        timestamp: '09:10'
-      }
-    ]);
-    setIsChatModalOpen(true);
+    // Navigate to chat page
+    navigate('/care-seeker/chat');
   };
 
   const handleCloseChatModal = () => {
