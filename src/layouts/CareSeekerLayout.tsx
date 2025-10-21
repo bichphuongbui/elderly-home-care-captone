@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUser, FiHeart, FiCalendar, FiAlertTriangle, FiMenu, FiX, FiLogOut, FiUserCheck, FiMessageCircle, FiBookOpen } from 'react-icons/fi';
+import { FiHome, FiUser, FiCalendar, FiAlertTriangle, FiMenu, FiX, FiLogOut, FiUserCheck, FiMessageCircle, FiBookOpen } from 'react-icons/fi';
 import Footer from '../components/layout/Footer';
 
 interface CareSeekerLayoutProps {
@@ -15,7 +15,6 @@ const CareSeekerLayout: React.FC<CareSeekerLayoutProps> = ({ children }) => {
   const menuItems = [
     { icon: FiHome, label: 'Dashboard', path: '/care-seeker' },
     { icon: FiUserCheck, label: 'Gia đình', path: '/care-seeker/family' },
-    { icon: FiHeart, label: 'Hồ sơ sức khỏe', path: '/care-seeker/health' },
     { icon: FiBookOpen, label: 'Đặt lịch', path: '/care-seeker/booking' },
     { icon: FiMessageCircle, label: 'Trò chuyện', path: '/care-seeker/chat' },
   ];
