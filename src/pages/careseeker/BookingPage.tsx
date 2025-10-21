@@ -35,7 +35,7 @@ const BookingPage: React.FC = () => {
   const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const [bookingForm, setBookingForm] = useState({
-    serviceType: 'home-care' as 'home-care' | 'video-call',
+    serviceType: 'home-care' as 'home-care',
     title: '',
     description: '',
     scheduledDate: '',
@@ -105,7 +105,7 @@ const BookingPage: React.FC = () => {
         description: bookingForm.description,
         scheduledDateTime,
         duration: bookingForm.duration * 60, // Convert to minutes
-        address: bookingForm.serviceType === 'home-care' ? bookingForm.address : undefined,
+        address: bookingForm.address,
         notes: bookingForm.notes,
         price: totalPrice,
         elderlyPersonName: bookingForm.elderlyPersonName,
@@ -174,7 +174,7 @@ const BookingPage: React.FC = () => {
 
   const resetBookingForm = () => {
     setBookingForm({
-      serviceType: 'home-care',
+      serviceType: 'home-care' as 'home-care',
       title: '',
       description: '',
       scheduledDate: '',
@@ -185,7 +185,7 @@ const BookingPage: React.FC = () => {
       elderlyPersonName: '',
       elderlyPersonAge: '',
       elderlyPersonRelationship: '',
-      paymentMethod: 'cash'
+      paymentMethod: 'cash' as 'cash' | 'qr'
     });
     // Reset QR payment states
     setQrCodeData(null);
@@ -482,14 +482,14 @@ const BookingPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Loại dịch vụ</label>
-                    <select
-                      value={bookingForm.serviceType}
-                      onChange={(e) => setBookingForm({...bookingForm, serviceType: e.target.value as 'home-care' | 'video-call'})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="home-care">Chăm sóc tại nhà</option>
-                      <option value="video-call">Tư vấn video call</option>
-                    </select>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                      Chăm sóc tại nhà
+                    </div>
+                    <input
+                      type="hidden"
+                      value="home-care"
+                      onChange={(e) => setBookingForm({...bookingForm, serviceType: e.target.value as 'home-care'})}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tiêu đề</label>
@@ -554,19 +554,17 @@ const BookingPage: React.FC = () => {
                   </div>
                 </div>
 
-                {bookingForm.serviceType === 'home-care' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
-                    <input
-                      type="text"
-                      value={bookingForm.address}
-                      onChange={(e) => setBookingForm({...bookingForm, address: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Địa chỉ nhà..."
-                      required
-                    />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+                  <input
+                    type="text"
+                    value={bookingForm.address}
+                    onChange={(e) => setBookingForm({...bookingForm, address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Địa chỉ nhà..."
+                    required
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
