@@ -13,12 +13,14 @@ import {
   getServiceTypeText,
   getServiceTypeIcon
 } from '../../services/careseeker-booking.service';
+import { getFamilyMembers, FamilyMember } from '../../services/family.service';
 
 const BookingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings'>('book');
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [myBookings, setMyBookings] = useState<CareSeekerBooking[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all');
@@ -43,9 +45,7 @@ const BookingPage: React.FC = () => {
     duration: 2,
     address: '',
     notes: '',
-    elderlyPersonName: '',
-    elderlyPersonAge: '',
-    elderlyPersonRelationship: '',
+    selectedFamilyMemberId: '',
     paymentMethod: 'cash' as 'cash' | 'qr'
   });
 
@@ -56,12 +56,14 @@ const BookingPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [caregiversData, bookingsData] = await Promise.all([
+      const [caregiversData, bookingsData, familyData] = await Promise.all([
         getCaregivers(),
-        getCareSeekerBookings('current-user-id') // Replace with actual user ID
+        getCareSeekerBookings('current-user-id'), // Replace with actual user ID
+        getFamilyMembers()
       ]);
       setCaregivers(caregiversData);
       setMyBookings(bookingsData);
+      setFamilyMembers(familyData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -93,7 +95,19 @@ const BookingPage: React.FC = () => {
       return;
     }
 
+    // Kiểm tra đã chọn người được chăm sóc
+    if (!bookingForm.selectedFamilyMemberId) {
+      alert('Vui lòng chọn người được chăm sóc!');
+      return;
+    }
+
     try {
+      const selectedFamilyMember = familyMembers.find(fm => fm.id === bookingForm.selectedFamilyMemberId);
+      if (!selectedFamilyMember) {
+        alert('Không tìm thấy thông tin người được chăm sóc!');
+        return;
+      }
+
       const scheduledDateTime = `${bookingForm.scheduledDate}T${bookingForm.scheduledTime}:00`;
       const totalPrice = selectedCaregiver.pricePerHour * bookingForm.duration;
 
@@ -108,9 +122,9 @@ const BookingPage: React.FC = () => {
         address: bookingForm.address,
         notes: bookingForm.notes,
         price: totalPrice,
-        elderlyPersonName: bookingForm.elderlyPersonName,
-        elderlyPersonAge: parseInt(bookingForm.elderlyPersonAge),
-        elderlyPersonRelationship: bookingForm.elderlyPersonRelationship,
+        elderlyPersonName: selectedFamilyMember.name,
+        elderlyPersonAge: selectedFamilyMember.age,
+        elderlyPersonRelationship: selectedFamilyMember.relationship,
         paymentMethod: bookingForm.paymentMethod
       });
 
@@ -182,9 +196,7 @@ const BookingPage: React.FC = () => {
       duration: 2,
       address: '',
       notes: '',
-      elderlyPersonName: '',
-      elderlyPersonAge: '',
-      elderlyPersonRelationship: '',
+      selectedFamilyMemberId: '',
       paymentMethod: 'cash' as 'cash' | 'qr'
     });
     // Reset QR payment states
@@ -566,46 +578,96 @@ const BookingPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên người được chăm sóc</label>
-                    <input
-                      type="text"
-                      value={bookingForm.elderlyPersonName}
-                      onChange={(e) => setBookingForm({...bookingForm, elderlyPersonName: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Tên đầy đủ"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tuổi</label>
-                    <input
-                      type="number"
-                      value={bookingForm.elderlyPersonAge}
-                      onChange={(e) => setBookingForm({...bookingForm, elderlyPersonAge: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Tuổi"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mối quan hệ</label>
-                    <select
-                      value={bookingForm.elderlyPersonRelationship}
-                      onChange={(e) => setBookingForm({...bookingForm, elderlyPersonRelationship: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Chọn mối quan hệ</option>
-                      <option value="parent">Bố/Mẹ</option>
-                      <option value="grandparent">Ông/Bà</option>
-                      <option value="spouse">Vợ/Chồng</option>
-                      <option value="relative">Họ hàng</option>
-                      <option value="other">Khác</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Người được chăm sóc *</label>
+                  <select
+                    value={bookingForm.selectedFamilyMemberId}
+                    onChange={(e) => setBookingForm({...bookingForm, selectedFamilyMemberId: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Chọn người được chăm sóc</option>
+                    {familyMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.avatar} {member.name} ({member.age} tuổi - {member.relationship})
+                      </option>
+                    ))}
+                  </select>
+                  {familyMembers.length === 0 && (
+                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        Bạn chưa có thành viên gia đình nào. 
+                        <button 
+                          type="button"
+                          onClick={() => navigate('/care-seeker/family')}
+                          className="text-blue-600 hover:text-blue-800 underline ml-1"
+                        >
+                          Thêm thành viên gia đình
+                        </button>
+                      </p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Hiển thị thông tin chi tiết của người được chăm sóc đã chọn */}
+                {bookingForm.selectedFamilyMemberId && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-blue-800 mb-3">Thông tin người được chăm sóc</h4>
+                    {(() => {
+                      const selectedMember = familyMembers.find(fm => fm.id === bookingForm.selectedFamilyMemberId);
+                      if (!selectedMember) return null;
+                      
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="text-2xl">{selectedMember.avatar}</div>
+                              <div>
+                                <h5 className="font-medium text-gray-900">{selectedMember.name}</h5>
+                                <p className="text-sm text-gray-600">{selectedMember.age} tuổi - {selectedMember.relationship}</p>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              <p><strong>Chiều cao:</strong> {selectedMember.height}</p>
+                              <p><strong>Cân nặng:</strong> {selectedMember.weight}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">
+                              <p><strong>Huyết áp:</strong> {selectedMember.bloodPressure}</p>
+                              <p><strong>Đường huyết:</strong> {selectedMember.bloodSugar}</p>
+                              <p><strong>Nhịp tim:</strong> {selectedMember.heartRate}</p>
+                            </div>
+                            {selectedMember.medicalConditions.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-sm font-medium text-gray-700 mb-1">Tình trạng sức khỏe:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedMember.medicalConditions.map((condition, index) => (
+                                    <span key={index} className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                                      {condition}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {selectedMember.allergies.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-sm font-medium text-gray-700 mb-1">Dị ứng:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedMember.allergies.map((allergy, index) => (
+                                    <span key={index} className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                                      {allergy}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú thêm</label>
