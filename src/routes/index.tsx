@@ -21,7 +21,6 @@ import CareGiverLayout from '../layouts/CareGiverLayout';
 import { User } from '../services/users.service';
 import CareSeekerDashboardPage from '../pages/careseeker/CareSeekerDashboardPage';
 import FamilyPage from '../pages/careseeker/FamilyPage';
-import HealthProfilePage from '../pages/careseeker/HealthProfilePage';
 import BookingPage from '../pages/careseeker/BookingPage';
 import CareSeekerChatPage from '../pages/careseeker/ChatPage';
 import CareSeekerCaregiverProfilePage from '../pages/careseeker/CaregiverProfilePage';
@@ -332,7 +331,6 @@ const AppRoutes: React.FC = () => {
          >
            <Route index element={<CareSeekerDashboardPage />} />
            <Route path="family" element={<FamilyPage />} />
-           <Route path="health" element={<HealthProfilePage />} />
             <Route path="booking" element={<BookingPage />} />
             <Route path="chat" element={<CareSeekerChatPage />} />
             <Route path="caregiver/:id" element={<CareSeekerCaregiverProfilePage />} />
