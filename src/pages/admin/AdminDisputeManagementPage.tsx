@@ -69,13 +69,14 @@ const SeverityBadge: React.FC<{ value: DisputeSeverity }> = ({ value }) => {
 
 const StatusBadge: React.FC<{ value: DisputeStatus }> = ({ value }) => {
   const map = {
-    in_review: "bg-indigo-100 text-indigo-700",
-    awaiting_info: "bg-amber-100 text-amber-700",
-    resolved: "bg-emerald-100 text-emerald-700",
-    refunded: "bg-blue-100 text-blue-700",
-    rejected: "bg-slate-100 text-slate-700",
+    in_review: { className: "text-white", style: { backgroundColor: "#70C1F1" } },
+    awaiting_info: { className: "bg-amber-100 text-amber-700", style: {} },
+    resolved: { className: "bg-emerald-100 text-emerald-700", style: {} },
+    refunded: { className: "bg-blue-100 text-blue-700", style: {} },
+    rejected: { className: "bg-slate-100 text-slate-700", style: {} },
   } as const;
-  return <span className={classNames("inline-flex rounded-full px-2 py-1 text-xs font-medium", map[value])}>{STATUS_LABEL[value]}</span>;
+  const config = map[value];
+  return <span className={classNames("inline-flex rounded-full px-2 py-1 text-xs font-medium", config.className)} style={config.style}>{STATUS_LABEL[value]}</span>;
 };
 
 function formatDate(iso: string) {
@@ -204,165 +205,275 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-xl bg-white shadow overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold">Tranh chấp #{dispute.id}</h3>
-            <StatusBadge value={dispute.status} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-6xl max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: "linear-gradient(to right, #70C1F1, #5AB4E8)" }}>
+          <div className="flex items-center gap-4">
+            <div className="rounded-lg bg-white/20 p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Chi tiết tranh chấp #{dispute.id}</h3>
+              <p className="text-sm text-white/90">Quản lý và xử lý tranh chấp</p>
+            </div>
           </div>
-          <button onClick={onClose} className="rounded p-2 text-gray-500 hover:bg-gray-100" aria-label="Đóng">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="rounded-lg p-2 text-white hover:bg-white/20 transition-colors" aria-label="Đóng">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-2 overflow-y-auto flex-1">
-          <div className="space-y-4">
-            <div className="rounded-lg border bg-white p-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="text-sm text-gray-500">Booking</div>
-                  <div className="font-medium">{dispute.bookingId ?? "—"}</div>
+        <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3 overflow-y-auto flex-1 bg-gray-50">
+          <div className="space-y-4 lg:col-span-2">
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Thông tin chung</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg p-2" style={{ backgroundColor: "rgba(112, 193, 241, 0.2)" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" style={{ color: "#70C1F1" }}>
+                      <path d="M12.75 12.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM7.5 15.75a.75.75 0 100-1.5.75.75 0 000 1.5zM8.25 17.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM9.75 15.75a.75.75 0 100-1.5.75.75 0 000 1.5zM10.5 17.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12 15.75a.75.75 0 100-1.5.75.75 0 000 1.5zM12.75 17.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM14.25 15.75a.75.75 0 100-1.5.75.75 0 000 1.5zM15 17.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM16.5 15.75a.75.75 0 100-1.5.75.75 0 000 1.5zM15 12.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM16.5 13.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                      <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Booking ID</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.bookingId ?? "—"}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Nhóm</div>
-                  <div className="font-medium">{CATEGORY_LABEL[category]}</div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg bg-purple-100 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-purple-600">
+                      <path fillRule="evenodd" d="M5.25 2.25a3 3 0 00-3 3v4.318a3 3 0 00.879 2.121l9.58 9.581c.92.92 2.39 1.186 3.548.428a18.849 18.849 0 005.441-5.44c.758-1.16.492-2.629-.428-3.548l-9.58-9.581a3 3 0 00-2.122-.879H5.25zM6.375 7.5a1.125 1.125 0 100-2.25 1.125 1.125 0 000 2.25z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Nhóm tranh chấp</div>
+                    <div className="mt-1 font-semibold text-gray-900">{CATEGORY_LABEL[category]}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Mức độ</div>
-                  <div className="font-medium"><SeverityBadge value={severity} /></div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg bg-amber-100 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-amber-600">
+                      <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Mức độ</div>
+                    <div className="mt-1"><SeverityBadge value={severity} /></div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Người tạo</div>
-                  <div className="font-medium">{dispute.createdByName} <span className="text-gray-500">({dispute.createdByRole})</span></div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg bg-blue-100 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-blue-600">
+                      <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Người tạo</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.createdByName}</div>
+                    <div className="text-xs text-gray-500">{dispute.createdByRole}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Đối tượng</div>
-                  <div className="font-medium">{dispute.againstName ?? "—"} <span className="text-gray-500">({dispute.againstRole})</span></div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg bg-rose-100 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-rose-600">
+                      <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Đối tượng tranh chấp</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.againstName ?? "—"}</div>
+                    <div className="text-xs text-gray-500">{dispute.againstRole}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Phụ trách</div>
-                  <div className="font-medium">{dispute.assignedTo ?? "Chưa gán"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Cập nhật</div>
-                  <div className="font-medium">{formatDate(dispute.updatedAt)}</div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                  <div className="rounded-lg bg-emerald-100 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-emerald-600">
+                      <path fillRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase">Admin phụ trách</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.assignedTo ?? "Chưa gán"}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
-              <div className="text-sm text-gray-500">Tóm tắt</div>
-              <div className="font-medium">{dispute.summary}</div>
-              <div className="mt-3 text-sm text-gray-500">Chi tiết</div>
-              <div className="whitespace-pre-wrap">{dispute.detail}</div>
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97zM6.75 8.25a.75.75 0 01.75-.75h9a.75.75 0 010 1.5h-9a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H7.5z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Nội dung tranh chấp</h4>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs font-medium text-gray-500 uppercase mb-1">Tóm tắt</div>
+                  <div className="text-sm font-medium text-gray-900 bg-gray-50 rounded-lg p-3">{dispute.summary}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-500 uppercase mb-1">Chi tiết</div>
+                  <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap leading-relaxed">{dispute.detail}</div>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
-              <div className="mb-2 text-sm font-medium text-gray-700">Timeline</div>
-              <div className="space-y-2">
-                {dispute.timeline.slice().reverse().map(t => (
-                  <div key={t.id} className="flex items-start gap-2 text-sm">
-                    <span className="mt-0.5 h-2 w-2 rounded-full bg-indigo-500" />
-                    <div>
-                      <div className="font-medium">{t.label}</div>
-                      <div className="text-gray-500">{formatDate(t.at)}</div>
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Lịch sử xử lý</h4>
+              </div>
+              <div className="relative">
+                <div className="absolute left-4 top-2 bottom-2 w-0.5" style={{ background: "linear-gradient(to bottom, rgba(112, 193, 241, 0.4), transparent)" }}></div>
+                <div className="space-y-4">
+                  {dispute.timeline.slice().reverse().map((t, idx) => (
+                    <div key={t.id} className="relative flex items-start gap-4">
+                      <div className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm`} style={{ backgroundColor: idx === 0 ? "#70C1F1" : "#d1d5db" }}>
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      </div>
+                      <div className="flex-1 pt-0.5">
+                        <div className="text-sm font-medium text-gray-900">{t.label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{formatDate(t.at)}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-lg border bg-white p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-medium text-gray-700">Chỉnh sửa thông tin</div>
-                <StatusBadge value={status} />
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Cập nhật thông tin</h4>
               </div>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
-                    <div className="flex items-center gap-2">
-                      <select value={status} onChange={(e) => setStatus(e.target.value as DisputeStatus)} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-                        {ALL_STATUSES.map((s) => (
-                          <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-                        ))}
-                      </select>
-                      <button onClick={handleSaveStatus} className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">Lưu</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Phụ trách</label>
-                    <div className="flex items-center gap-2">
-                      <select value={assignee ?? ""} onChange={(e) => setAssignee(e.target.value || undefined)} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-                        <option value="">Chưa gán</option>
-                        {ADMIN_LIST.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                      <button onClick={handleSaveAssign} className="rounded bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-900">Gán</button>
-                    </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Trạng thái</label>
+                  <div className="flex items-center gap-2">
+                    <select value={status} onChange={(e) => setStatus(e.target.value as DisputeStatus)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
+                      {ALL_STATUSES.map((s) => (
+                        <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                      ))}
+                    </select>
+                    <button onClick={handleSaveStatus} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm" style={{ backgroundColor: "#70C1F1" }}>
+                      Lưu
+                    </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nhóm tranh chấp</label>
-                    <div className="flex items-center gap-2">
-                      <select value={category} onChange={(e) => setCategory(e.target.value as DisputeCategory)} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-                        {(["Payment","Service Quality","Schedule","Behavior","Other"] as DisputeCategory[]).map(c => (
-                          <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
-                        ))}
-                      </select>
-                      <button onClick={handleSaveCategory} className="rounded bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700">Lưu</button>
-                    </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Admin phụ trách</label>
+                  <div className="flex items-center gap-2">
+                    <select value={assignee ?? ""} onChange={(e) => setAssignee(e.target.value || undefined)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
+                      <option value="">Chưa gán</option>
+                      {ADMIN_LIST.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                    <button onClick={handleSaveAssign} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm">
+                      Gán
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Mức độ nghiêm trọng</label>
-                    <div className="flex items-center gap-2">
-                      <select value={severity} onChange={(e) => setSeverity(e.target.value as DisputeSeverity)} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
-                        {(["low","medium","high"] as DisputeSeverity[]).map(s => (
-                          <option key={s} value={s}>{SEVERITY_LABEL[s]}</option>
-                        ))}
-                      </select>
-                      <button onClick={handleSaveSeverity} className="rounded bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700">Lưu</button>
-                    </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Nhóm tranh chấp</label>
+                  <div className="flex items-center gap-2">
+                    <select value={category} onChange={(e) => setCategory(e.target.value as DisputeCategory)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
+                      {(["Payment","Service Quality","Schedule","Behavior","Other"] as DisputeCategory[]).map(c => (
+                        <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
+                      ))}
+                    </select>
+                    <button onClick={handleSaveCategory} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-colors shadow-sm">
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Mức độ nghiêm trọng</label>
+                  <div className="flex items-center gap-2">
+                    <select value={severity} onChange={(e) => setSeverity(e.target.value as DisputeSeverity)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
+                      {(["low","medium","high"] as DisputeSeverity[]).map(s => (
+                        <option key={s} value={s}>{SEVERITY_LABEL[s]}</option>
+                      ))}
+                    </select>
+                    <button onClick={handleSaveSeverity} className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors shadow-sm">
+                      Lưu
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
-              <div className="mb-2 text-sm font-medium text-gray-700">Minh chứng</div>
-              <div className="divide-y divide-gray-100 rounded border">
-                {dispute.evidence.map(ev => (
-                  <div key={ev.id} className="flex items-center justify-between gap-3 p-2 text-sm">
-                    <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Minh chứng</h4>
+                <span className="ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: "#70C1F1" }}>
+                  {dispute.evidence.length}
+                </span>
+              </div>
+              {dispute.evidence.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  {dispute.evidence.map(ev => (
+                    <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg border-2 transition-colors bg-gray-50" style={{ borderColor: "rgba(112, 193, 241, 0.3)" }}>
                       {ev.type === 'image' && ev.url && (
-                        <div className="relative">
-                          <img 
-                            src={ev.url} 
-                            alt={ev.filename}
-                            className="h-12 w-12 rounded object-cover cursor-pointer hover:opacity-80"
-                            onClick={() => window.open(ev.url, '_blank')}
-                          />
-                        </div>
+                        <img 
+                          src={ev.url} 
+                          alt={ev.filename}
+                          className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
+                          onClick={() => window.open(ev.url, '_blank')}
+                        />
                       )}
-                      <div>
-                        <div className="font-medium">{ev.filename} <span className="text-gray-500">({ev.type})</span></div>
-                        <div className="text-gray-500">{ev.uploadedBy} • {formatDate(ev.uploadedAt)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-gray-900 truncate">{ev.filename}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {ev.uploadedBy} • {formatDate(ev.uploadedAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={ev.url || "#"} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                          style={{ backgroundColor: "#70C1F1" }}
+                        >
+                          Xem
+                        </a>
+                        <button 
+                          onClick={() => onDeleteEvidence(dispute.id, ev.id)} 
+                          className="rounded-lg border-2 border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
+                        >
+                          Xoá
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <a href={ev.url || "#"} target="_blank" rel="noreferrer" className="rounded border px-2 py-1 hover:bg-gray-50">Xem</a>
-                      <button onClick={() => onDeleteEvidence(dispute.id, ev.id)} className="rounded bg-red-50 px-2 py-1 text-red-700 hover:bg-red-100">Xoá</button>
-                    </div>
-                  </div>
-                ))}
-                {dispute.evidence.length === 0 && <div className="p-2 text-center text-sm text-gray-500">Chưa có minh chứng</div>}
-              </div>
-              <div className="mt-3 space-y-3">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <div className="text-sm text-gray-500 mb-2">Upload file minh chứng</div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mx-auto h-12 w-12 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-500">Chưa có minh chứng nào</p>
+                </div>
+              )}
+              <div className="space-y-3">
+                <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center transition-colors bg-gradient-to-br from-gray-50 to-white">
                   <input 
                     type="file" 
                     className="hidden" 
@@ -376,28 +487,37 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                                    file.type === 'application/pdf' ? 'pdf' :
                                    file.type.includes('document') ? 'docx' :
                                    file.type.startsWith('video/') ? 'video' : 'other');
-                        // Tạo URL tạm thời cho file
                         const url = URL.createObjectURL(file);
                         setFileUrl(url);
                       }
                     }}
                   />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mx-auto h-10 w-10 text-gray-400 mb-3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
                   <label 
                     htmlFor="evidence-upload" 
-                    className="inline-flex items-center gap-2 rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 cursor-pointer"
+                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white cursor-pointer shadow-sm transition-colors"
+                    style={{ backgroundColor: "#70C1F1" }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/>
                     </svg>
-                    Chọn file
+                    Chọn file minh chứng
                   </label>
+                  <p className="mt-2 text-xs text-gray-500">Hỗ trợ: Ảnh, PDF, Word, Video</p>
                 </div>
                 {fileName && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">File đã chọn: {fileName}</span>
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2" style={{ backgroundColor: "rgba(112, 193, 241, 0.1)", borderColor: "#70C1F1" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                      <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
+                      <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
+                    </svg>
+                    <span className="flex-1 text-sm font-medium truncate" style={{ color: "#70C1F1" }}>{fileName}</span>
                     <button 
                       onClick={addEvidence} 
-                      className="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700"
+                      className="rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors shadow-sm"
+                      style={{ backgroundColor: "#70C1F1" }}
                     >
                       Upload
                     </button>
@@ -407,7 +527,7 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                         setFileUrl("");
                         setFileType("image");
                       }} 
-                      className="rounded bg-gray-500 px-3 py-1 text-sm font-medium text-white hover:bg-gray-600"
+                      className="rounded-lg bg-gray-500 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-600 transition-colors"
                     >
                       Hủy
                     </button>
@@ -416,35 +536,80 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
               </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
-              <div className="mb-2 text-sm font-medium text-gray-700">Ghi chú nội bộ</div>
-              <div className="space-y-2">
-                {dispute.notes.map(n => (
-                  <div key={n.id} className="rounded border p-2 text-sm">
-                    <div className="font-medium">{n.author} <span className="text-gray-500">{formatDate(n.createdAt)}</span></div>
-                    <div>{n.content}</div>
-                  </div>
-                ))}
-                {dispute.notes.length === 0 && <div className="text-sm text-gray-500">Chưa có ghi chú</div>}
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97zM6.75 8.25a.75.75 0 01.75-.75h9a.75.75 0 010 1.5h-9a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H7.5z" clipRule="evenodd" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Ghi chú nội bộ</h4>
+                <span className="ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: "#70C1F1" }}>
+                  {dispute.notes.length}
+                </span>
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Thêm ghi chú" className="h-20 w-full resize-none rounded border border-gray-300 p-2 text-sm focus:border-indigo-500 focus:outline-none" />
-                <button onClick={addNote} className="h-10 shrink-0 rounded bg-gray-800 px-3 text-sm font-medium text-white hover:bg-gray-900">Thêm</button>
+              {dispute.notes.length > 0 ? (
+                <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                  {dispute.notes.map(n => (
+                    <div key={n.id} className="rounded-lg border-2 border-gray-100 p-3 bg-gradient-to-br from-gray-50 to-white transition-colors">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(112, 193, 241, 0.2)" }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" style={{ color: "#70C1F1" }}>
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A6.483 6.483 0 0010 16.5a6.483 6.483 0 004.793-2.11A5.99 5.99 0 0010 12z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm text-gray-900">{n.author}</div>
+                          <div className="text-xs text-gray-500">{formatDate(n.createdAt)}</div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-700 leading-relaxed pl-9">{n.content}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mx-auto h-10 w-10 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-500">Chưa có ghi chú nào</p>
+                </div>
+              )}
+              <div className="space-y-3">
+                <textarea 
+                  value={note} 
+                  onChange={(e) => setNote(e.target.value)} 
+                  placeholder="Nhập ghi chú nội bộ..." 
+                  className="w-full resize-none rounded-lg border-2 border-gray-200 p-3 text-sm focus:outline-none transition-colors min-h-[100px]"
+                  style={{ borderColor: "#70C1F1" }}
+                />
+                <button 
+                  onClick={addNote} 
+                  className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#70C1F1" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path d="M3.505 2.365A41.369 41.369 0 019 2c1.863 0 3.697.124 5.495.365 1.247.167 2.18 1.108 2.435 2.268a4.45 4.45 0 00-.577-.069 43.141 43.141 0 00-4.706 0C9.229 4.696 7.5 6.727 7.5 8.998v2.24c0 1.413.67 2.735 1.76 3.562l-2.98 2.98A.75.75 0 015 17.25v-3.443c-.501-.048-1-.106-1.495-.172C2.033 13.438 1 12.162 1 10.72V5.28c0-1.441 1.033-2.717 2.505-2.914z" />
+                    <path d="M14 6c-.762 0-1.52.02-2.271.062C10.157 6.148 9 7.472 9 8.998v2.24c0 1.519 1.147 2.839 2.71 2.935.214.013.428.024.642.034.2.009.385.09.518.224l2.35 2.35a.75.75 0 001.28-.531v-2.07c1.453-.195 2.5-1.463 2.5-2.915V8.998c0-1.526-1.157-2.85-2.729-2.936A41.645 41.645 0 0014 6z" />
+                  </svg>
+                  Thêm ghi chú
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t px-4 py-3 bg-white">
-          <div className="text-sm text-gray-500">
-            Tranh chấp #{dispute.id} • Cập nhật lần cuối: {formatDate(dispute.updatedAt)}
+        <div className="flex items-center justify-between border-t px-6 py-4 bg-white">
+          <div className="flex items-center gap-3">
+            <StatusBadge value={dispute.status} />
+            <div className="text-sm text-gray-500">
+              Cập nhật lần cuối: <span className="font-medium text-gray-700">{formatDate(dispute.updatedAt)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Đóng
-            </button>
-            
-          </div>
+          <button 
+            onClick={onClose} 
+            className="rounded-lg border-2 border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Đóng
+          </button>
         </div>
       </div>
     </div>

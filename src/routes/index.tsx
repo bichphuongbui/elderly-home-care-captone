@@ -32,6 +32,7 @@ import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
 import CertificateApprovalPage from '../pages/admin/CertificateApprovalPage';
 import AdminReviewManagementPage from '../pages/admin/AdminReviewManagementPage';
 import AdminDisputeManagementPage from '../pages/admin/AdminDisputeManagementPage';
+import ServicePackageManagementPage from '../pages/admin/ServicePackageManagementPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
@@ -393,6 +394,7 @@ const AppRoutes: React.FC = () => {
           <Route path="caregivers/:id" element={<CaregiverDetailPage />} />
           <Route path="feedback" element={<AdminReviewManagementPage />} />
           <Route path="disputes" element={<AdminDisputeManagementPage />} />
+          <Route path="packages" element={<ServicePackageManagementPage />} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
           <Route path="faq" element={<div className="p-4">FAQ</div>} />
         </Route>
