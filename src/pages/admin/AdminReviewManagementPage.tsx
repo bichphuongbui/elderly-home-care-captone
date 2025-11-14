@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 
 type ReviewCategory = "Video Consultation" | "Service" | "System" | "Complaint";
 type ReviewRole = "Care Seeker" | "Caregiver";
-type ReviewStatus = "new" | "in_review" | "resolved";
 
 export type AdminReview = {
   id: string;
@@ -13,7 +12,6 @@ export type AdminReview = {
   createdByName: string;
   createdByEmail?: string;
   relatedBookingId?: string;
-  status: ReviewStatus;
   createdAt: string; // ISO
 };
 
@@ -23,9 +21,6 @@ const CATEGORIES: ReviewCategory[] = [
   "System",
   "Complaint",
 ];
-
-// Giữ lại map nhãn trạng thái để hiển thị dạng chỉ đọc trong modal
-const STATUS_VALUES: ReviewStatus[] = ["new", "in_review", "resolved"];
 
 const CATEGORY_LABEL: Record<ReviewCategory, string> = {
   "Video Consultation": "Tư vấn video",
@@ -37,12 +32,6 @@ const CATEGORY_LABEL: Record<ReviewCategory, string> = {
 const ROLE_LABEL: Record<ReviewRole, string> = {
   "Care Seeker": "Người cần chăm sóc",
   "Caregiver": "Người chăm sóc",
-};
-
-const STATUS_LABEL: Record<ReviewStatus, string> = {
-  new: "Mới",
-  in_review: "Đang xử lý",
-  resolved: "Đã xong",
 };
 
 function generateMockReviews(count: number): AdminReview[] {
@@ -78,7 +67,6 @@ function generateMockReviews(count: number): AdminReview[] {
     const name = names[i % names.length];
     const email = emails[i % emails.length];
     const role: ReviewRole = Math.random() > 0.5 ? "Care Seeker" : "Caregiver";
-    const status = STATUS_VALUES[Math.floor(Math.random() * STATUS_VALUES.length)];
     const comment = comments[Math.floor(Math.random() * comments.length)];
     const createdAt = new Date(
       Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)
@@ -94,7 +82,6 @@ function generateMockReviews(count: number): AdminReview[] {
       createdByName: name,
       createdByEmail: email,
       relatedBookingId,
-      status,
       createdAt,
     });
   }
@@ -184,10 +171,6 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ open, review, onClose }) => {
                 <div className="font-medium">{review.relatedBookingId}</div>
               </div>
             )}
-            <div>
-              <div className="text-sm text-gray-500">Trạng thái</div>
-              <div className="font-medium">{STATUS_LABEL[review.status]}</div>
-            </div>
             <div className="sm:col-span-2">
               <div className="text-sm text-gray-500">Bình luận</div>
               <div className="whitespace-pre-wrap">{review.comment}</div>
