@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { FiMic, FiMicOff, FiVideo, FiVideoOff, FiMonitor, FiPhone } from 'react-icons/fi';
+import { FiMic, FiMicOff, FiVideo, FiVideoOff, FiPhone } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
 const VideoCallPage: React.FC = () => {

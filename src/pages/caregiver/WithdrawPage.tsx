@@ -25,11 +25,8 @@ const WithdrawPage: React.FC = () => {
   const [withdrawnThisMonth] = useState<number>(500000);
   const [lastWithdrawDate] = useState<string>('2025-09-10');
 
-  // Mocked transactions
-  const receivedTransactions = useMemo(() => [
-    { id: 'TX1008', type: 'Thanh toán lịch hẹn', bookingId: 'BK003', date: '2025-09-16 13:30', amount: 480000, status: 'completed' as TransactionStatus },
-    { id: 'TX1007', type: 'Thanh toán lịch hẹn', bookingId: 'BK002', date: '2025-09-15 17:45', amount: 330000, status: 'completed' as TransactionStatus },
-  ], []);
+
+ 
   
   const upcomingTransactions = useMemo(() => [
     { id: 'TX1012', type: 'Thanh toán dự kiến', bookingId: 'BK007', date: '2025-10-25 18:00', amount: 360000, status: 'confirmed' as TransactionStatus },

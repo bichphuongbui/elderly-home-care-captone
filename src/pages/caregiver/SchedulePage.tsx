@@ -25,7 +25,6 @@ const getStartOfWeek = (date: Date) => {
 
 const formatYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-const HOURS = Array.from({ length: 15 }).map((_, i) => 7 + i); // 7..21
 const DAY_START_HOUR = 7;
 const DAY_END_HOUR = 22; // exclusive
 const HOUR_PIXEL = 64; // px height per hour row

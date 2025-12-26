@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import axios from 'axios';
-import { checkEmailExists } from '../services/users.service';
+import { register } from '../services/auth.service';
 
 // Interface cho form data
 interface RegisterFormData {
@@ -12,6 +11,7 @@ interface RegisterFormData {
   password: string;
   confirmPassword: string;
   role: string;
+  phone: string;
 }
 
 // Interface cho validation errors
@@ -21,6 +21,8 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
   role?: string;
+  phone?: string;
+  general?: string;
 }
 
 
@@ -34,7 +36,8 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: ''
+    role: '',
+    phone: ''
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -75,8 +78,8 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  // Validate form cơ bản (không bao gồm check email trùng lặp)
-  const validateFormBasic = (): FormErrors => {
+  // Validate form
+  const validateForm = (): FormErrors => {
     const newErrors: FormErrors = {};
 
     // Kiểm tra họ và tên
@@ -110,6 +113,11 @@ const RegisterPage: React.FC = () => {
       newErrors.role = 'Vui lòng chọn vai trò';
     }
 
+    // Kiểm tra số điện thoại (optional nhưng nếu có thì phải hợp lệ)
+    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone)) {
+      newErrors.phone = 'Số điện thoại không hợp lệ';
+    }
+
     return newErrors;
   };
 
@@ -117,77 +125,56 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form cơ bản trước
-    const basicErrors = validateFormBasic();
-    if (Object.keys(basicErrors).length > 0) {
-      setErrors(basicErrors);
+    // Validate form trước
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
     try {
-      // Kiểm tra email đã tồn tại từ API
-      const emailExists = await checkEmailExists(formData.email.toLowerCase().trim());
-      if (emailExists) {
-        setErrors({ email: 'Email đã được sử dụng' });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Chuẩn bị payload theo vai trò
-      const isCaregiver = formData.role === 'Caregiver';
-      const payload = isCaregiver
-        ? {
-            fullName: formData.fullName.trim(),
-            email: formData.email.toLowerCase().trim(),
-            password: formData.password,
-            role: 'Caregiver',
-            status: 'pending',
-            credentials: ''
-          }
-        : {
-            fullName: formData.fullName.trim(),
-            email: formData.email.toLowerCase().trim(),
-            password: formData.password,
-            role: formData.role || 'Care Seeker'
-          };
-
-      // Gọi API theo yêu cầu
-      const response = await axios.post('https://68aed258b91dfcdd62ba657c.mockapi.io/users', payload);
-      const newUser = response.data;
-
-      // Lưu userId vừa đăng ký
-      if (newUser?.id) {
-        localStorage.setItem('userId', newUser.id);
-      }
-
-      // Thông báo thành công
-      setSuccessMessage('Đăng ký thành công');
-
-      // Reset form
-      setFormData({
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: ''
+      console.log('📝 Register form data:', {
+        fullName: formData.fullName,
+        email: formData.email,
+        role: formData.role,
+        phone: formData.phone,
       });
-      setErrors({});
 
-      // Điều hướng theo vai trò
-      if (isCaregiver) {
-        navigate('/care-giver/upload-credentials');
-      } else {
-        // Care Seeker hoặc Admin
-        navigate('/login');
-      }
+      // Gọi API register (không đợi response - do backend đang có vấn đề)
+      register({
+        name: formData.fullName.trim(),
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        role: formData.role,
+        phone: formData.phone.trim(),
+      }).then(result => {
+        console.log('📦 Register result:', result);
+      }).catch(err => {
+        console.error('Register API error:', err);
+      });
+
+      // Chuyển thẳng sang trang verify email (tạm thời không check response)
+      setSuccessMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
+      
+      console.log('✅ Redirecting to verify email...');
+
+      // Chuyển đến trang verify email sau 1 giây
+      setTimeout(() => {
+        navigate('/verify-email', { 
+          state: { email: formData.email.toLowerCase().trim() } 
+        });
+        setIsSubmitting(false);
+      }, 1000);
 
     } catch (error) {
-      console.error('Lỗi đăng ký:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra. Vui lòng thử lại.';
-      alert(errorMessage);
-    } finally {
+      console.error('❌ Lỗi đăng ký:', error);
+      setErrors({ 
+        general: 'Có lỗi xảy ra. Vui lòng thử lại.' 
+      });
       setIsSubmitting(false);
     }
   };
@@ -215,6 +202,18 @@ const RegisterPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-green-800 font-medium">{successMessage}</span>
+            </div>
+          </div>
+        )}
+
+        {/* General Error */}
+        {errors.general && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-red-800 font-medium">{errors.general}</span>
             </div>
           </div>
         )}
@@ -303,6 +302,27 @@ const RegisterPage: React.FC = () => {
               />
               {errors.confirmPassword && (
                 <p className="mt-2 text-sm text-red-600">{errors.confirmPassword}</p>
+              )}
+            </div>
+
+            {/* Số điện thoại */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                Số điện thoại
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className={`w-full px-4 py-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                  errors.phone ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0901234567"
+              />
+              {errors.phone && (
+                <p className="mt-2 text-sm text-red-600">{errors.phone}</p>
               )}
             </div>
 

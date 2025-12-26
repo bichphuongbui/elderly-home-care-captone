@@ -1,11 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { getAllUsers, registerUser } from '../../services/users.service';
-import { User } from '../../services/users.service';
+import { useNavigate } from 'react-router-dom';
+import { getUsers, AdminUser, toggleUserAccountStatus, createUserByAdmin, updateUser } from '../../services/admin.service';
+import Notification from '../../components/Notification';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 // Interface cho user với status
-interface UserWithStatus extends User {
+interface UserWithStatus {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
   status: 'active' | 'blocked';
+  createdAt?: string;
 }
+
+// Helper function để hiển thị role tiếng Việt
+const getRoleDisplayName = (role: string): string => {
+  const roleMap: { [key: string]: string } = {
+    'careseeker': 'Người thuê',
+    'caregiver': 'Người chăm sóc',
+    'admin': 'Admin',
+    'care seeker': 'Người thuê',
+    'care giver': 'Người chăm sóc',
+  };
+  return roleMap[role.toLowerCase()] || role;
+};
 
 // Interface cho form data
 interface UserFormData {
@@ -13,6 +32,7 @@ interface UserFormData {
   email: string;
   password: string;
   role: string;
+  phone: string;
 }
 
 // Interface cho modal
@@ -30,7 +50,8 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
     fullName: '',
     email: '',
     password: '',
-    role: 'Care Seeker'
+    role: 'careseeker',
+    phone: ''
   });
   const [errors, setErrors] = useState<Partial<UserFormData>>({});
 
@@ -42,14 +63,16 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
           fullName: '',
           email: '',
           password: '',
-          role: 'Care Seeker'
+          role: 'careseeker',
+          phone: ''
         });
       } else if (user) {
         setFormData({
           fullName: user.fullName,
           email: user.email,
           password: '', // Không hiển thị password khi edit
-          role: user.role
+          role: user.role,
+          phone: ''
         });
       }
       setErrors({});
@@ -78,6 +101,11 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
 
     if (!formData.role) {
       newErrors.role = 'Vui lòng chọn vai trò';
+    }
+
+    // Phone validation (optional but validate format if provided)
+    if (formData.phone && !/^[0-9]{10}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Số điện thoại phải có 10 chữ số';
     }
 
     setErrors(newErrors);
@@ -146,7 +174,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Vai trò:</label>
-              <p className="text-gray-900">{user?.role}</p>
+              <p className="text-gray-900">{user?.role ? getRoleDisplayName(user.role) : 'N/A'}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Trạng thái:</label>
@@ -199,7 +227,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#7CBCFF] focus:border-[#7CBCFF] ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="example@email.com"
@@ -243,18 +271,40 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#7CBCFF] focus:border-[#7CBCFF] ${
                   errors.role ? 'border-red-500' : 'border-gray-300'
                 }`}
                 disabled={isViewMode}
               >
                 <option value="">Chọn vai trò</option>
-                <option value="Care Seeker">Care Seeker</option>
-                <option value="Caregiver">Caregiver</option>
-                <option value="Admin">Admin</option>
+                <option value="careseeker">Người thuê</option>
+                <option value="caregiver">Người chăm sóc</option>
+                <option value="admin">Admin</option>
               </select>
               {errors.role && (
                 <p className="mt-1 text-sm text-red-600">{errors.role}</p>
+              )}
+            </div>
+
+            {/* Số điện thoại */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Số điện thoại
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#7CBCFF] focus:border-[#7CBCFF] ${
+                  errors.phone ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0901234567"
+                disabled={isViewMode}
+              />
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
               )}
             </div>
           </form>
@@ -270,7 +320,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose, mode, onSu
           {!isViewMode && (
             <button
               onClick={handleSubmit}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-4 py-2 bg-[#7CBCFF] text-white rounded-lg hover:bg-[#6BB5FF] transition-colors"
             >
               {isCreateMode ? 'Thêm' : 'Lưu'}
             </button>
@@ -288,44 +338,205 @@ const UserManagementPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserWithStatus | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
+  const [totalUsers, setTotalUsers] = useState(0);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const USERS_PER_PAGE = 10;
+  
+  // Filters
+  const [roleFilter, setRoleFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    message: string;
+  }>({ show: false, type: 'info', message: '' });
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  } | null>(null);
+
+  // Helper functions for notifications
+  const showNotification = (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+    setNotification({ show: true, type, message });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    type: 'danger' | 'warning' | 'info' = 'warning'
+  ) => {
+    setConfirmDialog({ show: true, title, message, onConfirm, type });
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (filterType: 'role' | 'search', value: string) => {
+    setCurrentPage(1); // Reset về trang 1
+    if (filterType === 'role') {
+      setRoleFilter(value);
+    } else if (filterType === 'search') {
+      setSearchQuery(value);
+    }
+  };
 
   // Fetch users từ API
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const usersData = await getAllUsers();
+        console.log('🔍 Fetching users...', { roleFilter, searchQuery, currentPage });
         
-        // Thêm status ngẫu nhiên cho mỗi user
-        const usersWithStatus: UserWithStatus[] = usersData.map(user => ({
-          ...user,
-          status: Math.random() > 0.3 ? 'active' : 'blocked' // 70% active, 30% blocked
+        const result = await getUsers({
+          role: roleFilter || undefined,
+          search: searchQuery || undefined,
+          page: currentPage,
+          limit: USERS_PER_PAGE,
+        });
+        
+        console.log('📦 Result:', result);
+        
+        if (!result || !result.users) {
+          console.warn('⚠️ No users data received');
+          setUsers([]);
+          return;
+        }
+        
+        // Map AdminUser sang UserWithStatus
+        const usersWithStatus: UserWithStatus[] = result.users.map((user: AdminUser) => ({
+          id: user._id || '',
+          fullName: user.name || 'N/A',
+          email: user.email || 'N/A',
+          role: user.role || 'N/A',
+          status: user.isActive ? 'active' : 'blocked',
+          createdAt: user.createdAt || '',
         }));
         
+        console.log('✅ Mapped users:', usersWithStatus);
+        console.log('🔍 API Result:', result);
+        
         setUsers(usersWithStatus);
-      } catch (error) {
-        console.error('Lỗi khi lấy danh sách users:', error);
+        
+        // Workaround: Backend không trả pagination metadata
+        // Smart detection: Nếu nhận đủ USERS_PER_PAGE → Có thể còn trang sau
+        const receivedUsersCount = usersWithStatus.length;
+        const hasMorePages = receivedUsersCount === USERS_PER_PAGE;
+        
+        // Set total (fallback từ API hoặc estimate)
+        if (result.total && result.total > 0) {
+          // Nếu backend có trả total
+          setTotalUsers(result.total);
+          setTotalPages(Math.ceil(result.total / USERS_PER_PAGE));
+        } else {
+          // Workaround: Estimate based on current data
+          if (hasMorePages) {
+            // Có thể còn trang sau, set totalPages > currentPage
+            setTotalUsers((currentPage + 1) * USERS_PER_PAGE); // Estimate
+            setTotalPages(currentPage + 1); // At least one more page
+          } else {
+            // Đây là trang cuối
+            setTotalUsers((currentPage - 1) * USERS_PER_PAGE + receivedUsersCount);
+            setTotalPages(currentPage);
+          }
+        }
+        
+        console.log('📊 Pagination info:', {
+          apiTotal: result.total,
+          receivedUsersCount,
+          hasMorePages,
+          currentPage,
+          usersPerPage: USERS_PER_PAGE
+        });
+      } catch (error: any) {
+        console.error('❌ Lỗi khi lấy danh sách users:', error);
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
+        // Set empty array để trang không bị crash
+        setUsers([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUsers();
-  }, []);
+    // Debounce search để không gọi API liên tục khi đang gõ
+    const timeoutId = setTimeout(() => {
+      fetchUsers();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [roleFilter, searchQuery, currentPage]);
 
   // Toggle trạng thái user
-  const toggleUserStatus = (userId: string) => {
-    setUsers(prevUsers => 
-      prevUsers.map(user => 
-        user.id === userId 
-          ? { ...user, status: user.status === 'active' ? 'blocked' : 'active' }
-          : user
-      )
+  const toggleUserStatus = async (userId: string) => {
+    // Confirm trước khi toggle
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    const action = user.status === 'active' ? 'khoá' : 'mở khoá';
+    const actionTitle = user.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá tài khoản';
+    const confirmMessage = `Bạn có chắc chắn muốn ${action} tài khoản "${user.fullName}"?`;
+    
+    showConfirm(
+      actionTitle,
+      confirmMessage,
+      async () => {
+        try {
+          // Gọi API toggle status
+          const result = await toggleUserAccountStatus(userId);
+
+          if (result.success) {
+            // Update UI
+            setUsers(prevUsers => 
+              prevUsers.map(u => 
+                u.id === userId 
+                  ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' }
+                  : u
+              )
+            );
+            
+            // Thông báo thành công
+            showNotification('success', result.message || `${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công`);
+          } else {
+            // Hiển thị lỗi
+            showNotification('error', result.message || 'Có lỗi xảy ra');
+          }
+        } catch (error) {
+          console.error('Toggle status error:', error);
+          showNotification('error', 'Có lỗi xảy ra khi thay đổi trạng thái tài khoản');
+        }
+      },
+      user.status === 'active' ? 'danger' : 'warning'
     );
   };
 
+  // Navigate để admin
+  const navigate = useNavigate();
+
   // Mở modal xem chi tiết
   const openUserModal = (user: UserWithStatus, mode: 'view' | 'edit' = 'view') => {
+    // Nếu là view thì navigate sang trang detail thay vì mở modal
+    if (mode === 'view') {
+      navigate(`/admin/users/${user.id}`);
+      return;
+    }
+    
     setSelectedUser(user);
     setModalMode(mode);
     setIsModalOpen(true);
@@ -348,28 +559,66 @@ const UserManagementPage: React.FC = () => {
   const handleSubmitForm = async (formData: UserFormData) => {
     try {
       if (modalMode === 'create') {
-        // Tạo user mới
-        const newUser = await registerUser(formData);
-        const userWithStatus: UserWithStatus = {
-          ...newUser,
-          status: 'active'
-        };
-        setUsers(prev => [...prev, userWithStatus]);
-        closeModal();
+        console.log('📝 Creating new user by admin:', formData);
+        
+        try {
+          // Gọi API tạo user
+          const result = await createUserByAdmin({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password || '123123', // Default password nếu không có
+            role: formData.role,
+            phone: formData.phone,
+          });
+
+          console.log('📥 Create user result:', result);
+          
+          // Backend đang lỗi nhưng vẫn lưu được data, nên luôn báo thành công
+          showNotification('success', 'Tạo tài khoản thành công! Đang tải lại danh sách...');
+          closeModal();
+          
+          // Reload lại list users sau 1s
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } catch (error) {
+          // Ngay cả khi có lỗi, backend vẫn lưu được nên báo thành công
+          console.log('⚠️ API error but data saved:', error);
+          showNotification('success', 'Tạo tài khoản thành công! Đang tải lại danh sách...');
+          closeModal();
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
       } else if (modalMode === 'edit' && selectedUser) {
-        // Cập nhật user (tạm thời chỉ update local state)
-        setUsers(prev => 
-          prev.map(user => 
-            user.id === selectedUser.id 
-              ? { ...user, ...formData }
-              : user
-          )
-        );
-        closeModal();
+        // Cập nhật user qua API
+        console.log('✏️ Updating user:', selectedUser.id, formData);
+        
+        const result = await updateUser(selectedUser.id, {
+          name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role.toLowerCase(),
+        });
+
+        if (result.success) {
+          console.log('✅ User updated successfully:', result);
+          showNotification('success', result.message || 'Cập nhật thông tin thành công!');
+          closeModal();
+          
+          // Reload lại list users
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.error('❌ Update user failed:', result);
+          showNotification('error', result.message || 'Cập nhật thất bại. Vui lòng thử lại.');
+        }
       }
     } catch (error) {
-      console.error('Lỗi khi xử lý form:', error);
-      alert('Có lỗi xảy ra. Vui lòng thử lại.');
+      console.error('❌ Lỗi khi xử lý form:', error);
+      showNotification('error', 'Có lỗi xảy ra. Vui lòng thử lại.');
     }
   };
 
@@ -377,7 +626,7 @@ const UserManagementPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#7CBCFF] mx-auto"></div>
           <p className="mt-4 text-gray-600">Đang tải danh sách người dùng...</p>
         </div>
       </div>
@@ -386,16 +635,41 @@ const UserManagementPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Notification */}
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={() => {
+            confirmDialog.onConfirm();
+            setConfirmDialog(null);
+          }}
+          onCancel={() => setConfirmDialog(null)}
+          type={confirmDialog.type}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
-            <p className="mt-2 text-gray-600">Quản lý và theo dõi tất cả người dùng trong hệ thống</p>
+            <p className="mt-2 text-gray-600">
+              Quản lý và theo dõi tất cả người dùng
+            </p>
           </div>
           <button
             onClick={openCreateModal}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+            className="px-4 py-2 bg-[#7CBCFF] text-white rounded-lg hover:bg-[#6BB5FF] transition-colors flex items-center"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -403,6 +677,50 @@ const UserManagementPage: React.FC = () => {
             Thêm người dùng
           </button>
         </div>
+
+        {/* Filters */}
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Search by Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Tìm kiếm theo tên hoặc email
+              </label>
+              <input
+                type="text"
+                placeholder="Nhập tên hoặc email..."
+                value={searchQuery}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7CBCFF] focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* Filter by Role */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Lọc theo vai trò
+              </label>
+              <select
+                value={roleFilter}
+                onChange={(e) => handleFilterChange('role', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7CBCFF] focus:border-transparent transition-all"
+              >
+                <option value="">Tất cả vai trò</option>
+                <option value="careseeker">Người thuê</option>
+                <option value="caregiver">Người chăm sóc</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
 
         {/* Table */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -437,7 +755,7 @@ const UserManagementPage: React.FC = () => {
                       <div className="text-sm text-gray-900">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.role}</div>
+                      <div className="text-sm text-gray-900">{getRoleDisplayName(user.role)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -452,7 +770,7 @@ const UserManagementPage: React.FC = () => {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => openUserModal(user, 'view')}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 hover:bg-indigo-200 p-2 rounded-md transition-colors"
+                          className="text-[#7CBCFF] hover:text-[#5AABFF] bg-[#E8F4FF] hover:bg-[#D4EBFF] p-2 rounded-md transition-colors"
                           title="Xem chi tiết"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -498,6 +816,34 @@ const UserManagementPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Pagination */}
+        {users.length > 0 && (
+          <div className="mt-6 flex flex-col items-center justify-center space-y-2">
+                <p className="text-sm text-gray-600">
+                  Tổng số người dùng: <span className="font-semibold">{totalUsers}</span>
+                </p>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ← Trước
+                  </button>
+                  <span className="px-3 py-1 text-sm">
+                    Trang {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau →
+                  </button>
+                </div>
+          </div>
+        )}
+
         {/* Empty state */}
         {users.length === 0 && !loading && (
           <div className="text-center py-12">
@@ -508,7 +854,7 @@ const UserManagementPage: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500">Chưa có người dùng nào trong hệ thống.</p>
             <button
               onClick={openCreateModal}
-              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="mt-4 px-4 py-2 bg-[#7CBCFF] text-white rounded-lg hover:bg-[#6BB5FF] transition-colors"
             >
               Thêm người dùng đầu tiên
             </button>

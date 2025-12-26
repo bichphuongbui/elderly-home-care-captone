@@ -27,7 +27,6 @@ const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
   const [isConnecting, setIsConnecting] = useState<boolean>(true);
   
   const listRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Load initial controls
   useEffect(() => {
@@ -189,7 +188,13 @@ const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
                     <div className="text-6xl mb-4">{otherParticipant.avatar}</div>
                     <h3 className="text-xl font-semibold text-white">{otherParticipant.name}</h3>
                     <p className="text-gray-300">
-                      {currentUserRole === 'caregiver' ? otherParticipant.relationship : otherParticipant.specialty}
+                      {currentUserRole === 'caregiver'
+                        ? 'relationship' in otherParticipant
+                          ? otherParticipant.relationship
+                          : ''
+                        : 'specialty' in otherParticipant
+                          ? otherParticipant.specialty
+                          : ''}
                     </p>
                     {!isCamOn && (
                       <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">

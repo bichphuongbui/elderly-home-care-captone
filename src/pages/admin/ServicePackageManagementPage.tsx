@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getPackages, createPackage, getPackageById, updatePackage, togglePackageStatus, ServicePackage as APIServicePackage } from "../../services/package.service";
+import Notification from "../../components/Notification";
 
-type PackageType = "basic" | "standard" | "premium";
+type PackageType = "basic" | "professional" | "premium";
 
 interface ServicePackage {
   id: number;
+  _id?: string; // MongoDB ObjectId
   name: string;
   description: string;
   price: number;
@@ -11,76 +14,38 @@ interface ServicePackage {
   duration: number; // giờ/ngày
   billingCycle: "month" | "day" | "hour";
   features: string[];
+  customFeatures?: string[];
   usageLimit?: string;
   userCount: number;
   isPopular: boolean;
   isActive: boolean;
 }
 
-const mockPackages: ServicePackage[] = [
-  {
-    id: 1,
-    name: "Gói Cơ Bản",
-    description: "Dành cho nhu cầu chăm sóc hàng ngày",
-    price: 500000,
-    type: "basic",
-    duration: 4,
-    billingCycle: "day",
-    features: [
-      "Chăm sóc cơ bản hàng ngày",
-      "Hỗ trợ vệ sinh cá nhân",
-      "Chuẩn bị bữa ăn đơn giản",
-      "Không bao gồm y tế chuyên sâu"
-    ],
-    usageLimit: "4 giờ/ngày",
-    userCount: 89,
-    isPopular: false,
-    isActive: true
-  },
-  {
-    id: 2,
-    name: "Gói Tiêu Chuẩn",
-    description: "Chăm sóc toàn diện cho người cao tuổi",
-    price: 1200000,
-    type: "standard",
-    duration: 8,
-    billingCycle: "day",
-    features: [
-      "Tất cả tính năng gói Cơ Bản",
-      "Theo dõi sức khỏe định kỳ",
-      "Tư vấn dinh dưỡng chuyên nghiệp",
-      "Hỗ trợ vật lý trị liệu cơ bản"
-    ],
-    usageLimit: "8 giờ/ngày",
-    userCount: 234,
-    isPopular: true,
-    isActive: true
-  },
-  {
-    id: 3,
-    name: "Gói Cao Cấp",
-    description: "Chăm sóc cao cấp 24/7 với đội ngũ chuyên nghiệp",
-    price: 2500000,
-    type: "premium",
-    duration: 24,
-    billingCycle: "day",
-    features: [
-      "Tất cả tính năng gói Tiêu Chuẩn",
-      "Chăm sóc y tế chuyên sâu 24/7",
-      "Điều dưỡng viên chuyên nghiệp",
-      "Hỗ trợ khẩn cấp ưu tiên"
-    ],
-    usageLimit: "24/7",
-    userCount: 67,
-    isPopular: false,
-    isActive: true
-  }
-];
 
 const ServicePackageManagementPage: React.FC = () => {
-  const [packages, setPackages] = useState<ServicePackage[]>(mockPackages);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
+  
+  // Pagination & Filters
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPackages, setTotalPackages] = useState(0);
+  const [packageTypeFilter, setPackageTypeFilter] = useState<PackageType | 'all'>('all');
+  const [isActiveFilter] = useState<boolean | undefined>(true);
+  const PACKAGES_PER_PAGE = 10;
+
+  // Notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    message: string;
+  }>({ show: false, type: 'info', message: '' });
+
+  const showNotification = (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+    setNotification({ show: true, type, message });
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -89,7 +54,7 @@ const ServicePackageManagementPage: React.FC = () => {
     price: "",
     type: "basic" as PackageType,
     duration: "",
-    billingCycle: "month" as "month" | "day" | "hour",
+    paymentCycle: "daily" as "daily" | "monthly" | "hourly",
     features: [] as string[],
     notes: "",
     isPopular: false,
@@ -111,8 +76,56 @@ const ServicePackageManagementPage: React.FC = () => {
   const [customFeature, setCustomFeature] = useState("");
   const [customFeatures, setCustomFeatures] = useState<string[]>([]);
 
+  // Fetch packages từ API
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        setLoading(true);
+        console.log('🔍 Fetching packages...', { packageTypeFilter, isActiveFilter, currentPage });
+        
+        const result = await getPackages({
+          packageType: packageTypeFilter === 'all' ? undefined : packageTypeFilter,
+          isActive: isActiveFilter,
+          page: currentPage,
+          limit: PACKAGES_PER_PAGE,
+        });
+
+        console.log('📦 Packages result:', result);
+
+        // Map API packages sang local format
+        const mappedPackages: ServicePackage[] = result.packages.map((pkg: APIServicePackage) => ({
+          id: parseInt(pkg._id.slice(-8), 16) || Math.random(), // Generate numeric ID from _id
+          _id: pkg._id, // Store original MongoDB ID
+          name: pkg.packageName,
+          description: pkg.description,
+          price: pkg.price,
+          type: pkg.packageType as PackageType,
+          duration: pkg.duration,
+          billingCycle: pkg.paymentCycle as 'day' | 'month' | 'hour',
+          features: pkg.services || [],
+          customFeatures: pkg.customServices || [],
+          usageLimit: `${pkg.duration} giờ`,
+          userCount: 0, // API không trả về
+          isPopular: pkg.isPopular || false,
+          isActive: pkg.isActive,
+        }));
+
+        setPackages(mappedPackages);
+        setTotalPackages(result.total);
+        setTotalPages(result.totalPages || Math.ceil(result.total / PACKAGES_PER_PAGE));
+      } catch (error) {
+        console.error('❌ Error fetching packages:', error);
+        setPackages([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, [packageTypeFilter, isActiveFilter, currentPage]);
+
   const stats = {
-    total: packages.length,
+    total: totalPackages,
     active: packages.filter(p => p.isActive).length,
     totalUsers: packages.reduce((sum, p) => sum + p.userCount, 0),
     revenue: packages.reduce((sum, p) => sum + p.price * p.userCount, 0)
@@ -126,7 +139,7 @@ const ServicePackageManagementPage: React.FC = () => {
       price: "",
       type: "basic",
       duration: "",
-      billingCycle: "month",
+      paymentCycle: "daily",
       features: [],
       notes: "",
       isPopular: false,
@@ -148,73 +161,284 @@ const ServicePackageManagementPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleEditPackage = (pkg: ServicePackage) => {
-    setEditingPackage(pkg);
-    setFormData({
-      name: pkg.name,
-      description: pkg.description,
-      price: pkg.price.toString(),
-      type: pkg.type,
-      duration: pkg.duration.toString(),
-      billingCycle: pkg.billingCycle,
-      features: pkg.features,
-      notes: "",
-      isPopular: pkg.isPopular,
-      isActive: pkg.isActive
-    });
-    setShowModal(true);
+  const handleEditPackage = async (pkg: ServicePackage) => {
+    try {
+      // Fetch fresh data from API if package has _id
+      if (pkg._id) {
+        console.log('📦 Fetching package details for editing:', pkg._id);
+        const result = await getPackageById(pkg._id);
+        
+        console.log('📦 Get package result:', result);
+        
+        if (result.success && result.package) {
+          const apiPkg = result.package;
+          setEditingPackage(pkg);
+          setFormData({
+            name: apiPkg.packageName,
+            description: apiPkg.description,
+            price: apiPkg.price.toString(),
+            type: apiPkg.packageType,
+            duration: apiPkg.duration.toString(),
+            paymentCycle: apiPkg.paymentCycle,
+            features: apiPkg.services || [],
+            notes: apiPkg.notes || "",
+            isPopular: apiPkg.isPopular,
+            isActive: apiPkg.isActive
+          });
+          
+          // Update feature checkboxes based on services
+          const services = apiPkg.services || [];
+          setFeatureChecks({
+            basicCare: services.includes("Chăm sóc cơ bản hàng ngày"),
+            personalHygiene: services.includes("Hỗ trợ vệ sinh cá nhân"),
+            mealPrep: services.includes("Chuẩn bị bữa ăn"),
+            healthMonitoring: services.includes("Theo dõi sức khỏe định kỳ"),
+            nutritionConsulting: services.includes("Tư vấn dinh dưỡng chuyên nghiệp"),
+            physicalTherapy: services.includes("Hỗ trợ vật lý trị liệu"),
+            medicalCare: services.includes("Chăm sóc y tế chuyên sâu"),
+            professionalNurse: services.includes("Điều dưỡng viên chuyên nghiệp"),
+            emergencySupport: services.includes("Hỗ trợ khẩn cấp ưu tiên"),
+          });
+          
+          setCustomFeatures(apiPkg.customServices || []);
+          setShowModal(true);
+          return;
+        } else {
+          console.warn('⚠️ API failed or no package data, using fallback');
+        }
+      } else {
+        console.warn('⚠️ No _id found, using fallback data');
+      }
+      
+      // Fallback to current data if API fails or no valid ID
+      setEditingPackage(pkg);
+      setFormData({
+        name: pkg.name,
+        description: pkg.description,
+        price: pkg.price.toString(),
+        type: pkg.type,
+        duration: pkg.duration.toString(),
+        paymentCycle: pkg.billingCycle === "day" ? "daily" : pkg.billingCycle === "month" ? "monthly" : "hourly",
+        features: pkg.features,
+        notes: "",
+        isPopular: pkg.isPopular,
+        isActive: pkg.isActive
+      });
+      
+      // Update feature checkboxes
+      const services = pkg.features || [];
+      setFeatureChecks({
+        basicCare: services.includes("Chăm sóc cơ bản hàng ngày"),
+        personalHygiene: services.includes("Hỗ trợ vệ sinh cá nhân"),
+        mealPrep: services.includes("Chuẩn bị bữa ăn"),
+        healthMonitoring: services.includes("Theo dõi sức khỏe định kỳ"),
+        nutritionConsulting: services.includes("Tư vấn dinh dưỡng chuyên nghiệp"),
+        physicalTherapy: services.includes("Hỗ trợ vật lý trị liệu"),
+        medicalCare: services.includes("Chăm sóc y tế chuyên sâu"),
+        professionalNurse: services.includes("Điều dưỡng viên chuyên nghiệp"),
+        emergencySupport: services.includes("Hỗ trợ khẩn cấp ưu tiên"),
+      });
+      
+      setCustomFeatures(pkg.customFeatures || []);
+      setShowModal(true);
+    } catch (error) {
+      console.error('❌ Error loading package for edit:', error);
+      
+      // Fallback to current data on error
+      setEditingPackage(pkg);
+      setFormData({
+        name: pkg.name,
+        description: pkg.description,
+        price: pkg.price.toString(),
+        type: pkg.type,
+        duration: pkg.duration.toString(),
+        paymentCycle: pkg.billingCycle === "day" ? "daily" : pkg.billingCycle === "month" ? "monthly" : "hourly",
+        features: pkg.features,
+        notes: "",
+        isPopular: pkg.isPopular,
+        isActive: pkg.isActive
+      });
+      
+      // Update feature checkboxes
+      const services = pkg.features || [];
+      setFeatureChecks({
+        basicCare: services.includes("Chăm sóc cơ bản hàng ngày"),
+        personalHygiene: services.includes("Hỗ trợ vệ sinh cá nhân"),
+        mealPrep: services.includes("Chuẩn bị bữa ăn"),
+        healthMonitoring: services.includes("Theo dõi sức khỏe định kỳ"),
+        nutritionConsulting: services.includes("Tư vấn dinh dưỡng chuyên nghiệp"),
+        physicalTherapy: services.includes("Hỗ trợ vật lý trị liệu"),
+        medicalCare: services.includes("Chăm sóc y tế chuyên sâu"),
+        professionalNurse: services.includes("Điều dưỡng viên chuyên nghiệp"),
+        emergencySupport: services.includes("Hỗ trợ khẩn cấp ưu tiên"),
+      });
+      
+      setCustomFeatures(pkg.customFeatures || []);
+      setShowModal(true);
+      
+      showNotification('warning', 'Đang dùng dữ liệu hiện tại (không tải được từ server)');
+    }
   };
 
-  const handleSavePackage = () => {
-    const selectedFeatures: string[] = [];
-    if (featureChecks.basicCare) selectedFeatures.push("Chăm sóc cơ bản hàng ngày");
-    if (featureChecks.personalHygiene) selectedFeatures.push("Hỗ trợ vệ sinh cá nhân");
-    if (featureChecks.mealPrep) selectedFeatures.push("Chuẩn bị bữa ăn");
-    if (featureChecks.healthMonitoring) selectedFeatures.push("Theo dõi sức khỏe định kỳ");
-    if (featureChecks.nutritionConsulting) selectedFeatures.push("Tư vấn dinh dưỡng chuyên nghiệp");
-    if (featureChecks.physicalTherapy) selectedFeatures.push("Hỗ trợ vật lý trị liệu");
-    if (featureChecks.medicalCare) selectedFeatures.push("Chăm sóc y tế chuyên sâu");
-    if (featureChecks.professionalNurse) selectedFeatures.push("Điều dưỡng viên chuyên nghiệp");
-    if (featureChecks.emergencySupport) selectedFeatures.push("Hỗ trợ khẩn cấp ưu tiên");
-    
-    // Add custom features
-    selectedFeatures.push(...customFeatures);
+  const handleSavePackage = async () => {
+    // Validate form
+    if (!formData.name.trim()) {
+      showNotification('error', 'Vui lòng nhập tên gói dịch vụ');
+      return;
+    }
+    if (!formData.description.trim()) {
+      showNotification('error', 'Vui lòng nhập mô tả');
+      return;
+    }
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      showNotification('error', 'Vui lòng nhập giá hợp lệ');
+      return;
+    }
+    if (!formData.duration || parseInt(formData.duration) <= 0) {
+      showNotification('error', 'Vui lòng nhập thời gian hợp lệ');
+      return;
+    }
+
+    // Collect selected services
+    const selectedServices: string[] = [];
+    if (featureChecks.basicCare) selectedServices.push("Chăm sóc cơ bản hàng ngày");
+    if (featureChecks.personalHygiene) selectedServices.push("Hỗ trợ vệ sinh cá nhân");
+    if (featureChecks.mealPrep) selectedServices.push("Chuẩn bị bữa ăn");
+    if (featureChecks.healthMonitoring) selectedServices.push("Theo dõi sức khỏe định kỳ");
+    if (featureChecks.nutritionConsulting) selectedServices.push("Tư vấn dinh dưỡng chuyên nghiệp");
+    if (featureChecks.physicalTherapy) selectedServices.push("Hỗ trợ vật lý trị liệu");
+    if (featureChecks.medicalCare) selectedServices.push("Chăm sóc y tế chuyên sâu");
+    if (featureChecks.professionalNurse) selectedServices.push("Điều dưỡng viên chuyên nghiệp");
+    if (featureChecks.emergencySupport) selectedServices.push("Hỗ trợ khẩn cấp ưu tiên");
 
     if (editingPackage) {
-      setPackages(packages.map(p => 
-        p.id === editingPackage.id 
-          ? { ...p, ...formData, price: parseFloat(formData.price), duration: parseInt(formData.duration), features: selectedFeatures }
-          : p
-      ));
-    } else {
-      const newPackage: ServicePackage = {
-        id: Math.max(...packages.map(p => p.id)) + 1,
-        name: formData.name,
+      // Update existing package
+      const payload = {
+        packageName: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
-        type: formData.type,
+        packageType: formData.type,
         duration: parseInt(formData.duration),
-        billingCycle: formData.billingCycle,
-        features: selectedFeatures,
-        userCount: 0,
+        paymentCycle: formData.paymentCycle,
+        services: selectedServices,
+        customServices: customFeatures,
+        notes: formData.notes,
         isPopular: formData.isPopular,
-        isActive: formData.isActive
       };
-      setPackages([...packages, newPackage]);
+
+      console.log('📦 Updating package with payload:', payload);
+
+      const result = await updatePackage(editingPackage._id || editingPackage.id.toString(), payload);
+
+      if (result.success) {
+        showNotification('success', result.message || 'Cập nhật gói dịch vụ thành công!');
+        setShowModal(false);
+        setEditingPackage(null);
+        
+        // Reload packages sau 1s
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showNotification('error', result.message || 'Có lỗi xảy ra khi cập nhật gói dịch vụ');
+      }
+    } else {
+      // Create new package
+      const payload = {
+        packageName: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        packageType: formData.type,
+        duration: parseInt(formData.duration),
+        paymentCycle: formData.paymentCycle,
+        services: selectedServices,
+        customServices: customFeatures,
+        notes: formData.notes,
+        isPopular: formData.isPopular,
+      };
+
+      console.log('📦 Creating package with payload:', payload);
+
+      const result = await createPackage(payload);
+
+      if (result.success) {
+        showNotification('success', result.message || 'Tạo gói dịch vụ thành công!');
+        setShowModal(false);
+        
+        // Reload packages sau 1s
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showNotification('error', result.message || 'Có lỗi xảy ra khi tạo gói dịch vụ');
+      }
     }
-    setShowModal(false);
+  };
+
+  const handleToggleStatus = async (pkg: ServicePackage, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering edit modal
+    
+    if (!pkg._id) {
+      showNotification('error', 'Không tìm thấy ID gói dịch vụ');
+      return;
+    }
+
+    try {
+      const result = await togglePackageStatus(pkg._id);
+      
+      if (result.success) {
+        showNotification('success', result.message || `Đã ${pkg.isActive ? 'khóa' : 'kích hoạt'} gói dịch vụ`);
+        
+        // Reload packages
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showNotification('error', result.message || 'Có lỗi xảy ra');
+      }
+    } catch (error) {
+      console.error('❌ Error toggling package status:', error);
+      showNotification('error', 'Không thể cập nhật trạng thái gói dịch vụ');
+    }
   };
 
   const getPackageColor = (type: PackageType) => {
     switch (type) {
       case "basic": return { bg: "#4F9CF9", gradient: "linear-gradient(135deg, #4F9CF9, #3B82F6)" };
-      case "standard": return { bg: "#A855F7", gradient: "linear-gradient(135deg, #A855F7, #9333EA)" };
+      case "professional": return { bg: "#A855F7", gradient: "linear-gradient(135deg, #A855F7, #9333EA)" };
       case "premium": return { bg: "#F59E0B", gradient: "linear-gradient(135deg, #F59E0B, #D97706)" };
     }
   };
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#70C1F1] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải danh sách gói dịch vụ...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Notification */}
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
+
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
@@ -237,7 +461,7 @@ const ServicePackageManagementPage: React.FC = () => {
         </div>
 
         {/* Stats */}
-        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -267,33 +491,29 @@ const ServicePackageManagementPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Lượt đăng ký</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
-              </div>
-              <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8" style={{ color: "#3B82F6" }}>
-                  <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Doanh thu tháng</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{(stats.revenue / 1000000).toFixed(0)}M</p>
-              </div>
-              <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(245, 158, 11, 0.1)" }}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8" style={{ color: "#F59E0B" }}>
-                  <path d="M10.464 8.746c.227-.18.497-.311.786-.394v2.795a2.252 2.252 0 01-.786-.393c-.394-.313-.546-.681-.546-1.004 0-.323.152-.691.546-1.004zM12.75 15.662v-2.824c.347.085.664.228.921.421.427.32.579.686.579.991 0 .305-.152.671-.579.991a2.534 2.534 0 01-.921.42z" />
-                  <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v.816a3.836 3.836 0 00-1.72.756c-.712.566-1.112 1.35-1.112 2.178 0 .829.4 1.612 1.113 2.178.502.4 1.102.647 1.719.756v2.978a2.536 2.536 0 01-.921-.421l-.879-.66a.75.75 0 00-.9 1.2l.879.66c.533.4 1.169.645 1.821.75V18a.75.75 0 001.5 0v-.81a4.124 4.124 0 001.821-.749c.745-.559 1.179-1.344 1.179-2.191 0-.847-.434-1.632-1.179-2.191a4.122 4.122 0 00-1.821-.75V8.354c.29.082.559.213.786.393l.415.33a.75.75 0 00.933-1.175l-.415-.33a3.836 3.836 0 00-1.719-.755V6z" clipRule="evenodd" />
-                </svg>
-              </div>
+        {/* Filters */}
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+          <div className="grid grid-cols-1 gap-4">
+            {/* Package Type Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Loại gói
+              </label>
+              <select
+                value={packageTypeFilter}
+                onChange={(e) => {
+                  setPackageTypeFilter(e.target.value as PackageType | 'all');
+                  setCurrentPage(1);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#70C1F1] focus:border-transparent"
+              >
+                <option value="all">Tất cả loại gói</option>
+                <option value="basic">Cơ bản</option>
+                <option value="professional">Chuyên nghiệp</option>
+                <option value="premium">Cao cấp</option>
+              </select>
             </div>
           </div>
         </div>
@@ -304,18 +524,36 @@ const ServicePackageManagementPage: React.FC = () => {
             <div 
               key={pkg.id} 
               onClick={() => handleEditPackage(pkg)}
-              className="relative rounded-2xl bg-white shadow-lg overflow-hidden border border-gray-100 transition-all hover:shadow-xl cursor-pointer"
+              className="relative rounded-2xl bg-white shadow-lg overflow-hidden border border-gray-100 transition-all hover:shadow-xl cursor-pointer flex flex-col"
             >
               {/* Header with gradient */}
               <div className="relative p-6 text-white" style={{ background: getPackageColor(pkg.type).gradient }}>
-                {pkg.isPopular && (
-                  <div className="absolute top-4 right-4">
-                    <span className="rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white border border-white/30">
+                {/* Lock/Unlock Icon */}
+                <div className="absolute top-4 right-4">
+                  <button
+                    onClick={(e) => handleToggleStatus(pkg, e)}
+                    className="rounded-full bg-white/20 backdrop-blur-sm p-2 hover:bg-white/30 transition-colors border border-white/30"
+                    title={pkg.isActive ? 'Click để khóa' : 'Click để kích hoạt'}
+                  >
+                    {pkg.isActive ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
+                        <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
+                        <path d="M18 1.5c2.9 0 5.25 2.35 5.25 5.25v3.75a.75.75 0 01-1.5 0V6.75a3.75 3.75 0 10-7.5 0v3a3 3 0 013 3v6.75a3 3 0 01-3 3H3.75a3 3 0 01-3-3v-6.75a3 3 0 013-3h9v-3c0-2.9 2.35-5.25 5.25-5.25z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 pr-12">
+                  <h3 className="text-2xl font-bold">{pkg.name}</h3>
+                  {pkg.isPopular && (
+                    <span className="rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-0.5 text-xs font-semibold text-white border border-white/30">
                       PHỔ BIẾN
                     </span>
-                  </div>
-                )}
-                <h3 className="text-2xl font-bold">{pkg.name}</h3>
+                  )}
+                </div>
                 <p className="mt-2 text-sm text-white/90">{pkg.description}</p>
               </div>
 
@@ -325,8 +563,9 @@ const ServicePackageManagementPage: React.FC = () => {
                   <span className="text-4xl font-bold text-gray-900">
                     {(pkg.price / 1000).toFixed(0)}K
                   </span>
-                  <span className="text-sm text-gray-500">VND</span>
-                  <span className="text-sm text-gray-500">/ {pkg.billingCycle === "month" ? "tháng" : pkg.billingCycle === "day" ? "ngày" : "giờ"}</span>
+                  <span className="text-sm text-gray-500">
+                    VND / {pkg.billingCycle === "month" ? "tháng" : "slot"}
+                  </span>
                 </div>
               </div>
 
@@ -340,28 +579,73 @@ const ServicePackageManagementPage: React.FC = () => {
                     <span className="text-sm text-gray-700">{feature}</span>
                   </div>
                 ))}
+                {pkg.customFeatures && pkg.customFeatures.length > 0 && pkg.customFeatures.map((feature, idx) => (
+                  <div key={`custom-${idx}`} className="flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 mt-0.5 shrink-0" style={{ color: "#70C1F1" }}>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-gray-700">{feature}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Footer */}
-              <div className="border-t border-gray-100 p-6 bg-gray-50">
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="border-t border-gray-100 p-6 bg-gray-50 mt-auto">
+                <div className="flex items-center text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
                     </svg>
                     <span>{pkg.usageLimit || `${pkg.duration} ${pkg.billingCycle === "day" ? "giờ/ngày" : "ngày"}`}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.19a.844.844 0 01-.277-.71 5 5 0 019.947 0 .843.843 0 01-.277.71A6.975 6.975 0 0110 18a6.974 6.974 0 01-4.696-1.81z" />
-                    </svg>
-                    <span>{pkg.userCount} người dùng</span>
-                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
+
+        {/* Empty State */}
+        {packages.length === 0 && !loading && (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Không có gói dịch vụ</h3>
+            <p className="mt-1 text-sm text-gray-500">Chưa có gói dịch vụ nào phù hợp với bộ lọc.</p>
+            <button
+              onClick={handleCreatePackage}
+              className="mt-4 px-4 py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: "#70C1F1" }}
+            >
+              Tạo gói dịch vụ mới
+            </button>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {packages.length > 0 && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-center">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Trước
+              </button>
+              <span className="px-3 py-1 text-sm">
+                Trang {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -441,7 +725,7 @@ const ServicePackageManagementPage: React.FC = () => {
                     style={{ borderColor: "#70C1F1" }}
                   >
                     <option value="basic">Cơ bản</option>
-                    <option value="standard">Tiêu chuẩn</option>
+                    <option value="professional">Chuyên nghiệp</option>
                     <option value="premium">Cao cấp</option>
                   </select>
                 </div>
@@ -467,14 +751,14 @@ const ServicePackageManagementPage: React.FC = () => {
                     Chu kỳ thanh toán
                   </label>
                   <select
-                    value={formData.billingCycle}
-                    onChange={(e) => setFormData({ ...formData, billingCycle: e.target.value as "month" | "day" | "hour" })}
+                    value={formData.paymentCycle}
+                    onChange={(e) => setFormData({ ...formData, paymentCycle: e.target.value as "daily" | "monthly" | "hourly" })}
                     className="w-full rounded-lg border-2 px-4 py-2.5 text-sm focus:outline-none transition-colors"
                     style={{ borderColor: "#70C1F1" }}
                   >
-                    <option value="month">Tháng</option>
-                    <option value="day">Ngày</option>
-                    <option value="hour">Giờ</option>
+                    <option value="monthly">Tháng</option>
+                    <option value="daily">Slot</option>
+                    <option value="hourly">Giờ</option>
                   </select>
                 </div>
               </div>
@@ -538,9 +822,12 @@ const ServicePackageManagementPage: React.FC = () => {
                       value={customFeature}
                       onChange={(e) => setCustomFeature(e.target.value)}
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && customFeature.trim()) {
-                          setCustomFeatures([...customFeatures, customFeature.trim()]);
-                          setCustomFeature("");
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (customFeature.trim()) {
+                            setCustomFeatures([...customFeatures, customFeature.trim()]);
+                            setCustomFeature("");
+                          }
                         }
                       }}
                       placeholder="Nhập tính năng mới..."
@@ -548,7 +835,9 @@ const ServicePackageManagementPage: React.FC = () => {
                       style={{ borderColor: customFeature ? "#70C1F1" : undefined }}
                     />
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
                         if (customFeature.trim()) {
                           setCustomFeatures([...customFeatures, customFeature.trim()]);
                           setCustomFeature("");
@@ -592,18 +881,6 @@ const ServicePackageManagementPage: React.FC = () => {
                   />
                   <span className="text-sm font-medium" style={{ color: "#70C1F1" }}>
                     Đánh dấu là gói phổ biến
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                    style={{ accentColor: "#70C1F1" }}
-                  />
-                  <span className="text-sm font-medium" style={{ color: "#70C1F1" }}>
-                    Kích hoạt gói dịch vụ
                   </span>
                 </label>
               </div>

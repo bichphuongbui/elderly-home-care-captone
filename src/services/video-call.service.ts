@@ -96,7 +96,7 @@ export const getVideoCallSessions = async (userId: string, role: 'caregiver' | '
 };
 
 // Service để join video call
-export const joinVideoCall = async (meetingId: string, userId: string): Promise<VideoCallSession | null> => {
+export const joinVideoCall = async (meetingId: string, _userId: string): Promise<VideoCallSession | null> => {
   try {
     const response = await axios.get<VideoCallSession[]>(`${API_BASE_URL}/video-calls`);
     const session = response.data.find(s => s.meetingId === meetingId);

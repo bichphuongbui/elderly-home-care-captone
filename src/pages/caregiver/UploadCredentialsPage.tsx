@@ -639,14 +639,6 @@ const UploadCredentialsPage: React.FC = () => {
     }
   };
 
-  const validateReferencePhone = (value: string) => {
-    const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$|^(\+84[3|5|7|8|9])[0-9]{8}$/;
-    if (value && !phoneRegex.test(value)) {
-      setValidationErrors(prev => ({ ...prev, referencePhone: 'Số điện thoại không đúng định dạng Việt Nam' }));
-    } else {
-      setValidationErrors(prev => ({ ...prev, referencePhone: '' }));
-    }
-  };
 
   // Legacy validation removed
 

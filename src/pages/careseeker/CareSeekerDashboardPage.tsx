@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCalendar, FiClock, FiVideo, FiStar, FiX, FiMapPin, FiPhone, FiMail, FiAward, FiClock as FiTimeIcon } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiStar, FiX, FiMapPin, FiPhone, FiMail, FiAward, FiClock as FiTimeIcon } from 'react-icons/fi';
 
 // Mock data types
 interface Caregiver {
@@ -27,6 +27,8 @@ interface Booking {
     name: string;
     avatar: string;
     specialty: string;
+    rating?: number;
+    reviewCount?: number;
   };
   elderlyPerson: {
     name: string;
@@ -44,6 +46,8 @@ interface Booking {
   review?: string;
   canReview?: boolean;
   completedDate?: string;
+  totalAmount?: number;
+  patientName?: string;
 }
 
 type TaskType = 'fixed' | 'flexible' | 'optional';
@@ -99,9 +103,9 @@ const CareSeekerDashboardPage: React.FC = () => {
     startTime: '',
     endTime: ''
   });
-  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [, setQrCodeData] = useState<string | null>(null);
   const [isQrGenerated, setIsQrGenerated] = useState(false);
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [, setIsPaymentProcessing] = useState(false);
   const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
 
@@ -119,7 +123,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     return null;
   };
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [, setCurrentUser] = useState(null);
   const [userName, setUserName] = useState("Người dùng");
 
   // Load user data after component mounts
@@ -130,18 +134,13 @@ const CareSeekerDashboardPage: React.FC = () => {
   }, []);
 
   // Mock statistics data
-  const stats = [
-    { label: 'Đã hoàn thành', value: '10', icon: FiCalendar, color: 'green', description: 'Lịch sử đặt lịch', type: 'completed' },
-    { label: 'Đang diễn ra', value: '1', icon: FiClock, color: 'blue', description: 'Booking hiện tại', type: 'active' },
-    { label: 'Sắp tới', value: '2', icon: FiVideo, color: 'orange', description: 'Booking sắp tới', type: 'upcoming' },
-  ];
 
   // Mock bookings data - sắp xếp từ mới nhất đến cũ nhất
   const bookings: Booking[] = [
     // Completed bookings - chưa đánh giá (có thể đánh giá) - MỚI NHẤT
     {
       id: 6,
-      caregiver: { name: 'Phạm Thu Hà', avatar: '👩‍⚕️', specialty: 'Chăm sóc sức khỏe' },
+      caregiver: { name: 'Phạm Thu Hà', avatar: '👩‍⚕️', specialty: 'Chăm sóc sức khỏe', rating: 4.7, reviewCount: 12 },
       elderlyPerson: { name: 'Nguyễn Văn Bố', age: 72, relationship: 'Bố', avatar: '👨‍🦳' },
       date: '22/01/2024',
       time: '09:00 - 13:00',
@@ -154,7 +153,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     },
     {
       id: 7,
-      caregiver: { name: 'Nguyễn Thị Lan', avatar: '👩‍⚕️', specialty: 'Dinh dưỡng' },
+      caregiver: { name: 'Nguyễn Thị Lan', avatar: '👩‍⚕️', specialty: 'Dinh dưỡng', rating: 4.8, reviewCount: 8 },
       elderlyPerson: { name: 'Trần Thị Mẹ', age: 68, relationship: 'Mẹ', avatar: '👩‍🦳' },
       date: '21/01/2024',
       time: '10:00 - 12:00',
@@ -167,7 +166,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     },
     {
       id: 8,
-      caregiver: { name: 'Võ Minh Tuấn', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu' },
+      caregiver: { name: 'Võ Minh Tuấn', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu', rating: 4.9, reviewCount: 15 },
       elderlyPerson: { name: 'Nguyễn Văn Bố', age: 72, relationship: 'Bố', avatar: '👨‍🦳' },
       date: '20/01/2024',
       time: '15:00 - 17:00',
@@ -181,7 +180,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     // Completed bookings - đã đánh giá - CŨ HƠN
     {
       id: 1,
-      caregiver: { name: 'Trần Thị Mai', avatar: '👩‍⚕️', specialty: 'Chăm sóc người cao tuổi' },
+      caregiver: { name: 'Trần Thị Mai', avatar: '👩‍⚕️', specialty: 'Chăm sóc người cao tuổi', rating: 4.8, reviewCount: 20 },
       elderlyPerson: { name: 'Nguyễn Văn Bố', age: 72, relationship: 'Bố', avatar: '👨‍🦳' },
       date: '15/01/2024',
       time: '08:00 - 12:00',
@@ -196,7 +195,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     },
     {
       id: 2,
-      caregiver: { name: 'Lê Văn Hùng', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu' },
+      caregiver: { name: 'Lê Văn Hùng', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu', rating: 4.9, reviewCount: 18 },
       elderlyPerson: { name: 'Trần Thị Mẹ', age: 68, relationship: 'Mẹ', avatar: '👩‍🦳' },
       date: '12/01/2024',
       time: '14:00 - 16:00',
@@ -211,7 +210,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     },
     {
       id: 9,
-      caregiver: { name: 'Lê Thị Hoa', avatar: '👩‍⚕️', specialty: 'Chăm sóc người cao tuổi' },
+      caregiver: { name: 'Lê Thị Hoa', avatar: '👩‍⚕️', specialty: 'Chăm sóc người cao tuổi', rating: 4.7, reviewCount: 10 },
       elderlyPerson: { name: 'Trần Thị Mẹ', age: 68, relationship: 'Mẹ', avatar: '👩‍🦳' },
       date: '10/01/2024',
       time: '08:00 - 12:00',
@@ -226,7 +225,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     },
     {
       id: 10,
-      caregiver: { name: 'Phạm Văn Đức', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu' },
+      caregiver: { name: 'Phạm Văn Đức', avatar: '👨‍⚕️', specialty: 'Vật lý trị liệu', rating: 4.6, reviewCount: 7 },
       elderlyPerson: { name: 'Nguyễn Văn Bố', age: 72, relationship: 'Bố', avatar: '👨‍🦳' },
       date: '08/01/2024',
       time: '14:00 - 16:00',
@@ -277,91 +276,25 @@ const CareSeekerDashboardPage: React.FC = () => {
   ];
 
   // Mock caregivers data
-  const caregivers: Caregiver[] = [
-    {
-      id: 1,
-      name: 'Trần Thị Mai',
-      avatar: '👩‍⚕️',
-      specialty: 'Chăm sóc người cao tuổi',
-      rating: 4.8,
-      experience: '5 năm kinh nghiệm',
-      location: 'Quận 1, TP.HCM',
-      phone: '0901 234 567',
-      email: 'tranthimai@example.com',
-      certifications: ['Chứng chỉ Y tá', 'Chứng chỉ Chăm sóc người cao tuổi', 'CPR'],
-      languages: ['Tiếng Việt', 'Tiếng Anh'],
-      hourlyRate: 150000,
-      description: 'Chuyên gia chăm sóc người cao tuổi với 5 năm kinh nghiệm. Tôi có khả năng chăm sóc toàn diện cho người già, bao gồm hỗ trợ sinh hoạt hàng ngày, quản lý thuốc men và theo dõi sức khỏe.',
-      availability: 'Thứ 2 - Thứ 6: 8:00 - 17:00'
-    },
-    {
-      id: 2,
-      name: 'Lê Văn Hùng',
-      avatar: '👨‍⚕️',
-      specialty: 'Vật lý trị liệu',
-      rating: 4.9,
-      experience: '8 năm kinh nghiệm',
-      location: 'Quận 3, TP.HCM',
-      phone: '0902 345 678',
-      email: 'levanhung@example.com',
-      certifications: ['Bằng Vật lý trị liệu', 'Chứng chỉ Massage trị liệu', 'Chứng chỉ Phục hồi chức năng'],
-      languages: ['Tiếng Việt', 'Tiếng Anh', 'Tiếng Pháp'],
-      hourlyRate: 200000,
-      description: 'Chuyên gia vật lý trị liệu với 8 năm kinh nghiệm. Tôi chuyên về phục hồi chức năng cho người cao tuổi, giúp cải thiện khả năng vận động và giảm đau nhức.',
-      availability: 'Thứ 2 - Chủ nhật: 7:00 - 19:00'
-    },
-    {
-      id: 3,
-      name: 'Phạm Thu Hà',
-      avatar: '👩‍⚕️',
-      specialty: 'Dinh dưỡng & Chăm sóc',
-      rating: 4.7,
-      experience: '6 năm kinh nghiệm',
-      location: 'Quận 7, TP.HCM',
-      phone: '0903 456 789',
-      email: 'phamthuha@example.com',
-      certifications: ['Bằng Dinh dưỡng học', 'Chứng chỉ Chăm sóc bệnh nhân', 'Chứng chỉ An toàn thực phẩm'],
-      languages: ['Tiếng Việt', 'Tiếng Anh'],
-      hourlyRate: 180000,
-      description: 'Chuyên gia dinh dưỡng và chăm sóc với 6 năm kinh nghiệm. Tôi chuyên về lập kế hoạch dinh dưỡng phù hợp cho người cao tuổi và hỗ trợ chăm sóc sức khỏe tổng thể.',
-      availability: 'Thứ 2 - Thứ 6: 9:00 - 18:00'
-    }
-  ];
 
   // Mock family members data
-  const familyMembers = [
-    { id: 1, name: 'Nguyễn Văn Bố', age: 72, relationship: 'Bố', avatar: '👨‍🦳', conditions: ['Huyết áp cao', 'Tiểu đường'] },
-    { id: 2, name: 'Trần Thị Mẹ', age: 68, relationship: 'Mẹ', avatar: '👩‍🦳', conditions: ['Viêm khớp', 'Loãng xương'] }
-  ];
 
 
 
 
-  const getColorClasses = (color: string) => {
-    const colorMap: Record<string, string> = {
-      blue: 'bg-blue-50 text-blue-600 border-blue-200',
-      green: 'bg-green-50 text-green-600 border-green-200',
-      orange: 'bg-orange-50 text-orange-600 border-orange-200',
-      purple: 'bg-purple-50 text-purple-600 border-purple-200',
-    };
-    return colorMap[color] || colorMap.blue;
-  };
 
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number | undefined) => {
+    const ratingValue = rating || 0;
     return Array.from({ length: 5 }, (_, i) => (
       <FiStar
         key={i}
-        className={`h-4 w-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        className={`h-4 w-4 ${i < Math.floor(ratingValue) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
       />
     ));
   };
 
   // Hàm mở modal chi tiết caregiver
-  const handleViewDetails = (caregiver: Caregiver) => {
-    setSelectedCaregiver(caregiver);
-    setIsModalOpen(true);
-  };
 
   // Hàm đóng modal
   const handleCloseModal = () => {
@@ -370,7 +303,8 @@ const CareSeekerDashboardPage: React.FC = () => {
   };
 
   // Format tiền tệ
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return '0 VNĐ';
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND'
@@ -389,19 +323,6 @@ const CareSeekerDashboardPage: React.FC = () => {
     setSelectedBookingType(null);
   };
 
-  const handleBookCaregiver = (caregiver: Caregiver, familyMember: any) => {
-    setSelectedBookingCaregiver(caregiver);
-    setSelectedBookingFamilyMember(familyMember);
-    setBookingForm({
-      date: '',
-      time: '',
-      duration: '4',
-      type: caregiver.specialty,
-      notes: '',
-      paymentMethod: 'cash'
-    });
-    setIsBookingFormOpen(true);
-  };
 
   const handleCloseBookingForm = () => {
     setIsBookingFormOpen(false);
@@ -514,7 +435,7 @@ const CareSeekerDashboardPage: React.FC = () => {
     }
   };
 
-  const handleOpenChat = (caregiver: any) => {
+  const handleOpenChat = () => {
     // Navigate to chat page
     navigate('/care-seeker/chat');
   };
@@ -729,7 +650,7 @@ const CareSeekerDashboardPage: React.FC = () => {
                       <p className="text-sm text-gray-600">{booking.caregiver.specialty}</p>
                       <div className="flex items-center mt-1">
                         <div className="flex items-center">
-                          {renderStars(booking.caregiver.rating)}
+                          {renderStars(booking.caregiver.rating ?? 0)}
                         </div>
                         <span className="ml-2 text-sm text-gray-600">
                           {booking.caregiver.rating} ({booking.caregiver.reviewCount} đánh giá)
@@ -747,12 +668,12 @@ const CareSeekerDashboardPage: React.FC = () => {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    <span>👴 {booking.patientName}</span>
+                    <span>👴 {booking.elderlyPerson.name}</span>
                     <span>⏱️ {booking.duration} giờ</span>
                     <span>💰 {formatCurrency(booking.totalAmount)}</span>
                   </div>
                   <button
-                    onClick={() => handleOpenChat(booking.caregiver)}
+                    onClick={() => handleOpenChat()}
                     className="w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
                     title="Nhắn tin"
                   >
@@ -822,7 +743,7 @@ const CareSeekerDashboardPage: React.FC = () => {
                     <span>💰 {formatCurrency(booking.totalAmount)}</span>
                   </div>
                   <button
-                    onClick={() => handleOpenChat(booking.caregiver)}
+                    onClick={() => handleOpenChat()}
                     className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
                     title="Nhắn tin"
                   >
@@ -893,7 +814,7 @@ const CareSeekerDashboardPage: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => handleOpenChat(booking.caregiver)}
+                      onClick={() => handleOpenChat()}
                       className="w-8 h-8 bg-purple-500 hover:bg-purple-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md hover:shadow-lg transform hover:scale-105"
                       title="Nhắn tin"
                     >
@@ -902,7 +823,7 @@ const CareSeekerDashboardPage: React.FC = () => {
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleReviewBooking(booking)}
+                      onClick={() => handleOpenReview(booking)}
                       className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full hover:bg-yellow-200 transition-colors"
                     >
                       Đánh giá
@@ -1080,7 +1001,7 @@ const CareSeekerDashboardPage: React.FC = () => {
                             </div>
                             {/* Nút chat tròn */}
                             <button
-                              onClick={() => handleOpenChat(booking.caregiver)}
+                              onClick={() => handleOpenChat()}
                               className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg hover:shadow-xl transform hover:scale-105"
                               title="Nhắn tin"
                             >

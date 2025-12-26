@@ -1,38 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-
-interface CaregiverItem {
-  id: string;
-  fullName: string;
-  email: string;
-  credentials?: string;
-  status?: string;
-  role?: string;
-  credentialImage?: string;
-}
+import { getCaregiverProfiles, CaregiverProfile } from '../../services/admin.service';
 
 const CaregiverApprovalPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [caregivers, setCaregivers] = useState<CaregiverItem[]>([]);
+  const [caregivers, setCaregivers] = useState<CaregiverProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const itemsPerPage = 10;
+  const [searchKeyword, setSearchKeyword] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<CaregiverItem[]>('https://68aed258b91dfcdd62ba657c.mockapi.io/users?role=Caregiver');
-      setCaregivers(res.data);
+      const response = await getCaregiverProfiles({
+        page,
+        limit: itemsPerPage,
+      });
+      
+      setCaregivers(response.profiles);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
+      setCurrentPage(response.currentPage);
     } catch (e) {
-      setError('Không thể tải danh sách caregiver.');
+      setError('Không thể tải danh sách người chăm sóc.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(currentPage);
+  }, [currentPage]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -62,7 +64,7 @@ const CaregiverApprovalPage: React.FC = () => {
     return (
       <div className="p-6">
         <p className="text-red-600">{error}</p>
-        <button onClick={fetchData} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+        <button onClick={() => fetchData(currentPage)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
           Thử lại
         </button>
       </div>
@@ -72,13 +74,28 @@ const CaregiverApprovalPage: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Quản lý Caregiver</h1>
-        <p className="text-gray-600">Danh sách tất cả caregiver đã đăng ký</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Quản lý Người chăm sóc</h1>
+        <p className="text-gray-600">Danh sách tất cả người chăm sóc đã đăng ký</p>
+      </div>
+
+      {/* Search Section */}
+      <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
+        <input
+          type="text"
+          placeholder="Tìm theo tên, email, số điện thoại..."
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7CA4FF] focus:border-transparent"
+        />
       </div>
 
       {caregivers.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">Không có caregiver nào đã đăng ký.</p>
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
+          <p className="text-gray-500 text-lg">Chưa có người chăm sóc nào đăng ký.</p>
         </div>
       ) : (
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -101,20 +118,36 @@ const CaregiverApprovalPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {caregivers.map(caregiver => (
-                  <tr key={caregiver.id} className="hover:bg-gray-50">
+                {caregivers
+                  .filter(caregiver => {
+                    if (!searchKeyword) return true;
+                    const keyword = searchKeyword.toLowerCase();
+                    return (
+                      caregiver.user.name.toLowerCase().includes(keyword) ||
+                      caregiver.user.email.toLowerCase().includes(keyword) ||
+                      caregiver.phoneNumber?.toLowerCase().includes(keyword)
+                    );
+                  })
+                  .map(caregiver => (
+                  <tr key={caregiver._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{caregiver.fullName}</div>
+                      <div className="flex items-center">
+                        {caregiver.profileImage && (
+                          <img src={caregiver.profileImage} alt={caregiver.user.name} className="h-10 w-10 rounded-full mr-3 object-cover" />
+                        )}
+                        <div className="text-sm font-medium text-gray-900">{caregiver.user.name}</div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{caregiver.email}</div>
+                      <div className="text-sm text-gray-900">{caregiver.user.email}</div>
+                      <div className="text-xs text-gray-500">{caregiver.phoneNumber}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(caregiver.status || 'unknown')}
+                      {getStatusBadge(caregiver.profileStatus)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <Link
-                        to={`/admin/caregivers/${caregiver.id}`}
+                        to={`/admin/caregivers/${caregiver._id}`}
                         className="text-primary-600 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 px-3 py-1 rounded-md transition-colors"
                       >
                         Xem chi tiết
@@ -125,59 +158,48 @@ const CaregiverApprovalPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
+              <div className="text-sm text-gray-700">
+                Hiển thị <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> đến{' '}
+                <span className="font-medium">{Math.min(currentPage * itemsPerPage, total)}</span> trong tổng số{' '}
+                <span className="font-medium">{total}</span> người chăm sóc
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                >
+                  Trước
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${
+                      currentPage === page
+                        ? 'bg-[#7CA4FF] text-white'
+                        : 'border hover:bg-gray-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded-md border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Summary Stats */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Chờ duyệt</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {caregivers.filter(c => c.status === 'pending').length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Đã duyệt</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {caregivers.filter(c => c.status === 'approved').length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Bị từ chối</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {caregivers.filter(c => c.status === 'rejected').length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

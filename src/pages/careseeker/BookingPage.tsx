@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCalendar, FiClock, FiMapPin, FiUser, FiStar, FiSearch, FiFilter, FiPlus, FiX, FiEye } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiMapPin, FiUser, FiStar, FiSearch, FiX, FiEye } from 'react-icons/fi';
 import { 
   getCaregivers, 
   createCareSeekerBooking, 
@@ -31,9 +31,9 @@ const BookingPage: React.FC = () => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   
   // QR Payment states
-  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [, setQrCodeData] = useState<string | null>(null);
   const [isQrGenerated, setIsQrGenerated] = useState(false);
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [, setIsPaymentProcessing] = useState(false);
   const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const [bookingForm, setBookingForm] = useState({
@@ -124,8 +124,7 @@ const BookingPage: React.FC = () => {
         price: totalPrice,
         elderlyPersonName: selectedFamilyMember.name,
         elderlyPersonAge: selectedFamilyMember.age,
-        elderlyPersonRelationship: selectedFamilyMember.relationship,
-        paymentMethod: bookingForm.paymentMethod
+        elderlyPersonRelationship: selectedFamilyMember.relationship
       });
 
       const paymentMessage = bookingForm.paymentMethod === 'qr' 
@@ -155,7 +154,7 @@ const BookingPage: React.FC = () => {
         amount: totalAmount,
         account: '1234567890',
         bank: 'ABC Bank',
-        content: `Booking ${bookingForm.elderlyPersonName} - ${bookingForm.scheduledDate}`,
+        content: `Booking ${familyMembers.find(fm => fm.id === bookingForm.selectedFamilyMemberId)?.name || ''} - ${bookingForm.scheduledDate}`,
         bookingId: `BK${Date.now()}`
       };
       
@@ -694,7 +693,7 @@ const BookingPage: React.FC = () => {
                         name="paymentMethod"
                         value="cash"
                         checked={bookingForm.paymentMethod === 'cash'}
-                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value})}
+                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value as 'cash' | 'qr'})}
                         className="sr-only"
                       />
                       <div className="flex items-center space-x-3">
@@ -720,7 +719,7 @@ const BookingPage: React.FC = () => {
                         name="paymentMethod"
                         value="qr"
                         checked={bookingForm.paymentMethod === 'qr'}
-                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value})}
+                        onChange={(e) => setBookingForm({...bookingForm, paymentMethod: e.target.value as 'cash' | 'qr'})}
                         className="sr-only"
                       />
                       <div className="flex items-center space-x-3">
@@ -789,7 +788,7 @@ const BookingPage: React.FC = () => {
                               <div className="text-xs text-gray-500 mb-3">
                                 <p>Ngân hàng: ABC Bank</p>
                                 <p>Tài khoản: 1234567890</p>
-                                <p>Nội dung: Booking {bookingForm.elderlyPersonName} - {bookingForm.scheduledDate}</p>
+                                <p>Nội dung: Booking {familyMembers.find(fm => fm.id === bookingForm.selectedFamilyMemberId)?.name || ''} - {bookingForm.scheduledDate}</p>
                               </div>
                               <div className="flex space-x-2">
                                 <button 

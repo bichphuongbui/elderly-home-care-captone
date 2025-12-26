@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCalendar, FiClock, FiCheckCircle, FiMessageCircle, FiFileText, FiBookOpen, FiAlertTriangle, FiBell, FiChevronRight, FiPlay, FiList } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiCheckCircle, FiMessageCircle, FiFileText, FiBookOpen, FiAlertTriangle, FiBell, FiChevronRight } from 'react-icons/fi';
 
 const CareGiverDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -85,11 +85,6 @@ const CareGiverDashboardPage: React.FC = () => {
     const m = `${d.getMonth() + 1}`.padStart(2, '0');
     const day = `${d.getDate()}`.padStart(2, '0');
     return `${y}-${m}-${day}`;
-  };
-  const addDays = (d: Date, days: number) => {
-    const nd = new Date(d);
-    nd.setDate(nd.getDate() + days);
-    return nd;
   };
 
   // Mock schedule events aligned with BookingDetailPage data
