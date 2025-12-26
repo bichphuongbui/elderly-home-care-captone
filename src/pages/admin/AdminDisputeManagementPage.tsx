@@ -1,82 +1,127 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿// Dropdown chọn admin để gán khiếu nại
+const AdminAssignSelect: React.FC<{
+  value?: string;
+  onChange: (adminId: string) => void;
+  currentUserId?: string;
+}> = ({ value, onChange, currentUserId }) => {
+  const [admins, setAdmins] = React.useState<AdminUser[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    setLoading(true);
+    getUsers({ role: 'admin', isActive: true, limit: 100 }).then(res => {
+      setAdmins(res.users);
+      setLoading(false);
+    });
+  }, []);
+  if (loading) return <select disabled className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium"><option>Đang tải admin...</option></select>;
+  return (
+    <select value={value ?? ""} onChange={e => onChange(e.target.value)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium">
+      <option value="">Chưa gán</option>
+      {admins.map(a => (
+        <option key={a._id} value={a._id}>
+          {a.name || a.email || a._id}{currentUserId && a._id === currentUserId ? ' (Bạn)' : ''}
+        </option>
+      ))}
+    </select>
+  );
+};
+// Hiển thị tên người tạo ghi chú nội bộ
+const NoteUserName: React.FC<{ userId: string }> = ({ userId }) => {
+  const [user, setUser] = React.useState<AdminUser | null>(null);
+  React.useEffect(() => {
+    let mounted = true;
+    getUserById(userId).then(u => { if (mounted) setUser(u); });
+    return () => { mounted = false; };
+  }, [userId]);
+  if (!user) return <div className="font-semibold text-sm text-gray-900 animate-pulse">Đang tải...</div>;
+  return (
+    <div className="font-semibold text-sm text-gray-900">
+      {user.name || user.email || user._id}
+      {user.email ? <span className="ml-1 text-xs text-gray-400">({user.email})</span> : null}
+    </div>
+  );
+};
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { getAllDisputesForAdmin, AdminDispute, updateDisputeStatus, assignDisputeToAdmin, updateDisputeSeverity, addDisputeInternalNote, getDisputeByIdForAdmin, makeAdminDecision, DisputeEvidence } from "../../services/complaint.service";
+import { getUserById, AdminUser, getUsers } from "../../services/admin.service";
+import Notification from "../../components/Notification";
 
-type DisputeCategory = "Payment" | "Service Quality" | "Schedule" | "Behavior" | "Other";
-type DisputeSeverity = "low" | "medium" | "high";
-type DisputeStatus = "in_review" | "awaiting_info" | "resolved" | "refunded" | "rejected";
-type UserRole = "Care Seeker" | "Caregiver";
+type DisputeCategory = "service_quality" | "payment_issue" | "schedule_conflict" | "unprofessional_behavior" | "safety_concern" | "other";
+type DisputeSeverity = "low" | "medium" | "high" | "critical";
+type DisputeStatus = "pending" | "under_review" | "awaiting_response" | "resolved" | "rejected" | "withdrawn";
+type UserRole = "careseeker" | "caregiver";
 
 type EvidenceType = "image" | "pdf" | "docx" | "video" | "other";
 
-export type Dispute = {
-  id: string;
-  bookingId?: string;
-  category: DisputeCategory;
-  severity: DisputeSeverity;
-  status: DisputeStatus;
-  createdByRole: UserRole;
-  createdByName: string;
-  createdByEmail?: string;
-  againstRole: UserRole extends "Care Seeker" ? "Caregiver" : "Care Seeker" | "Caregiver" | "Care Seeker";
-  againstName?: string;
-  summary: string;
-  detail: string;
-  createdAt: string;
-  updatedAt: string;
-  assignedTo?: string;
-  notes: Array<{ id: string; author: string; content: string; createdAt: string }>;
-  evidence: Array<{ id: string; filename: string; type: EvidenceType; url?: string; uploadedBy: string; uploadedAt: string }>;
-  timeline: Array<{ id: string; type: "created" | "status_change" | "note_added" | "evidence_added"; label: string; at: string; meta?: any }>;
-};
-
 const CATEGORY_LABEL: Record<DisputeCategory, string> = {
-  Payment: "Thanh toán",
-  "Service Quality": "Chất lượng dịch vụ",
-  Schedule: "Lịch hẹn",
-  Behavior: "Ứng xử",
-  Other: "Khác",
+  service_quality: "Chất lượng dịch vụ",
+  payment_issue: "Thanh toán",
+  schedule_conflict: "Lịch hẹn",
+  unprofessional_behavior: "Ứng xử",
+  safety_concern: "An toàn",
+  other: "Khác",
 };
 
 const SEVERITY_LABEL: Record<DisputeSeverity, string> = {
   low: "Thấp",
   medium: "Trung bình",
   high: "Cao",
+  critical: "Nghiêm trọng",
 };
 
-const STATUS_LABEL: Record<DisputeStatus, string> = {
-  in_review: "Đang xem xét",
-  awaiting_info: "Chờ bổ sung",
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Chờ xử lý",
+  under_review: "Đang xem xét",
+  awaiting_response: "Chờ phản hồi",
   resolved: "Đã giải quyết",
-  refunded: "Đã hoàn tiền",
   rejected: "Từ chối",
+  withdrawn: "Đã rút",
+  investigating: "Đang điều tra",
 };
 
-const ALL_STATUSES: DisputeStatus[] = ["in_review", "awaiting_info", "resolved", "refunded", "rejected"];
+function prettifyStatus(status: string): string {
+  if (!status) return "Không xác định";
+  // Replace underscores with spaces, capitalize first letter of each word
+  return status
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
-const ADMIN_LIST = ["Admin A", "Admin B", "Admin C"];
+const ALL_STATUSES: DisputeStatus[] = ["pending", "under_review", "awaiting_response", "resolved", "rejected", "withdrawn"];
 
 function classNames(...c: Array<string | false | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
 const SeverityBadge: React.FC<{ value: DisputeSeverity }> = ({ value }) => {
-  const map = {
+  const map: Record<DisputeSeverity, string> = {
     low: "bg-gray-100 text-gray-700",
     medium: "bg-amber-100 text-amber-700",
     high: "bg-red-100 text-red-700",
-  } as const;
+    critical: "bg-purple-100 text-purple-700",
+  };
   return <span className={classNames("inline-flex rounded-full px-2 py-1 text-xs font-medium", map[value])}>{SEVERITY_LABEL[value]}</span>;
 };
 
-const StatusBadge: React.FC<{ value: DisputeStatus }> = ({ value }) => {
-  const map = {
-    in_review: { className: "text-white", style: { backgroundColor: "#70C1F1" } },
-    awaiting_info: { className: "bg-amber-100 text-amber-700", style: {} },
+const StatusBadge: React.FC<{ value?: string }> = ({ value }) => {
+  // Map known statuses to color classes, fallback to gray
+  const map: Record<string, { className: string; style: any }> = {
+    pending: { className: "bg-yellow-100 text-yellow-700", style: {} },
+    under_review: { className: "text-white", style: { backgroundColor: "#70C1F1" } },
+    awaiting_response: { className: "bg-amber-100 text-amber-700", style: {} },
     resolved: { className: "bg-emerald-100 text-emerald-700", style: {} },
-    refunded: { className: "bg-blue-100 text-blue-700", style: {} },
     rejected: { className: "bg-slate-100 text-slate-700", style: {} },
-  } as const;
-  const config = map[value];
-  return <span className={classNames("inline-flex rounded-full px-2 py-1 text-xs font-medium", config.className)} style={config.style}>{STATUS_LABEL[value]}</span>;
+    withdrawn: { className: "bg-gray-100 text-gray-700", style: {} },
+    investigating: { className: "bg-blue-100 text-blue-700", style: {} },
+  };
+  const label = value && STATUS_LABEL[value] ? STATUS_LABEL[value] : prettifyStatus(value || "");
+  const config = (value && map[value]) ? map[value] : { className: "bg-gray-200 text-gray-400", style: {} };
+  return (
+    <span className={classNames("inline-flex rounded-full px-2 py-1 text-xs font-medium", config.className)} style={config.style}>
+      {label}
+    </span>
+  );
 };
 
 function formatDate(iso: string) {
@@ -87,51 +132,6 @@ function formatDate(iso: string) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
-}
-
-function generateMockDisputes(): Dispute[] {
-  const now = Date.now();
-  const cats: DisputeCategory[] = ["Payment", "Service Quality", "Schedule", "Behavior", "Other"];
-  const severities: DisputeSeverity[] = ["low", "medium", "high"];
-  const statuses: DisputeStatus[] = ALL_STATUSES;
-  const roles: UserRole[] = ["Care Seeker", "Caregiver"];
-  return Array.from({ length: 10 }).map((_, i) => {
-    const createdAt = new Date(now - (i + 1) * 86400000).toISOString();
-    const updatedAt = new Date(now - i * 43200000).toISOString();
-    const status = statuses[i % statuses.length];
-    const severity = severities[(i + 1) % severities.length];
-    const category = cats[i % cats.length];
-    const createdByRole = roles[i % roles.length];
-    const againstRole = createdByRole === "Care Seeker" ? "Caregiver" : "Care Seeker";
-    const id = `D-${1000 + i}`;
-    return {
-      id,
-      bookingId: i % 2 === 0 ? `BK-${2000 + i}` : undefined,
-      category,
-      severity,
-      status,
-      createdByRole,
-      createdByName: createdByRole === "Care Seeker" ? `Người dùng ${i + 1}` : `Caregiver ${i + 1}`,
-      createdByEmail: `user${i + 1}@example.com`,
-      againstRole,
-      againstName: againstRole === "Care Seeker" ? `Người dùng ${i + 2}` : `Caregiver ${i + 2}`,
-      summary: `Vấn đề ${i + 1} liên quan ${CATEGORY_LABEL[category]}`,
-      detail: `Mô tả chi tiết tranh chấp ${i + 1} về ${CATEGORY_LABEL[category]} với mức độ ${SEVERITY_LABEL[severity]}.`,
-      createdAt,
-      updatedAt,
-      assignedTo: i % 3 === 0 ? ADMIN_LIST[i % ADMIN_LIST.length] : undefined,
-      notes: [
-        { id: `N-${i}-1`, author: "Admin A", content: "Đã tiếp nhận.", createdAt },
-      ],
-      evidence: [
-        { id: `E-${i}-1`, filename: "screenshot.png", type: "image", url: "#", uploadedBy: "Admin A", uploadedAt: createdAt },
-      ],
-      timeline: [
-        { id: `T-${i}-1`, type: "created", label: "Tạo tranh chấp", at: createdAt },
-        { id: `T-${i}-2`, type: "status_change", label: `Trạng thái: Khởi tạo → ${STATUS_LABEL[status]}` , at: updatedAt, meta: { to: status } },
-      ],
-    };
-  });
 }
 
 const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode }> = ({ title, value, icon }) => {
@@ -146,62 +146,135 @@ const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode }
   );
 };
 
-type DisputeDetailModalProps = {
+interface DisputeDetailModalProps {
   open: boolean;
-  dispute?: Dispute | null;
+  dispute: AdminDispute | null;
+  loading?: boolean;
   onClose: () => void;
-  onChangeStatus: (id: string, status: DisputeStatus) => void;
+  onChangeStatus: (id: string, status: DisputeStatus, note?: string, allowComplainantResponse?: boolean, allowRespondentResponse?: boolean) => void;
   onAssign: (id: string, assignee?: string) => void;
   onChangeSeverity: (id: string, severity: DisputeSeverity) => void;
   onChangeCategory: (id: string, category: DisputeCategory) => void;
   onAddEvidence: (id: string, e: { filename: string; type: EvidenceType; url?: string }) => void;
-  onDeleteEvidence: (id: string, evidenceId: string) => void;
   onAddNote: (id: string, note: string) => void;
-};
+  onMakeDecision: (id: string, decision: {
+    decision: string;
+    resolution: string;
+    refundAmount?: number;
+    compensationAmount?: number;
+    actions?: string[];
+    notes?: string;
+  }) => void;
+}
 
-const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, onClose, onChangeStatus, onAssign, onChangeSeverity, onChangeCategory, onAddEvidence, onDeleteEvidence, onAddNote }) => {
-  const [status, setStatus] = useState<DisputeStatus>("in_review");
+const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, loading, onClose, onChangeStatus, onAssign, onAddNote, onMakeDecision }) => {
+  const [status, setStatus] = useState<DisputeStatus>("pending");
   const [assignee, setAssignee] = useState<string | undefined>(undefined);
+  /* Unused state variables - commented out
   const [severity, setSeverity] = useState<DisputeSeverity>("low");
-  const [category, setCategory] = useState<DisputeCategory>("Other");
+  const [category, setCategory] = useState<DisputeCategory>("other");
   const [fileName, setFileName] = useState("");
   const [fileType, setFileType] = useState<EvidenceType>("image");
   const [fileUrl, setFileUrl] = useState("");
+  */
   const [note, setNote] = useState("");
+  const [statusNote, setStatusNote] = useState("");
+  const [allowComplainantResponse, setAllowComplainantResponse] = useState(true);
+  const [allowRespondentResponse, setAllowRespondentResponse] = useState(true);
+  const [previewEvidence, setPreviewEvidence] = useState<DisputeEvidence | null>(null);
+  
+  // Decision states
+  const [adminDecision, setAdminDecision] = useState<'favor_complainant' | 'favor_respondent' | 'partial_favor'>('favor_complainant');
+  const [decisionResolution, setDecisionResolution] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState<number | "">("");
+  const [selectedActions, setSelectedActions] = useState<string[]>([]);
+  const [additionalNotes, setAdditionalNotes] = useState("");
 
   useEffect(() => {
     if (dispute) {
       setStatus(dispute.status);
-      setAssignee(dispute.assignedTo);
-      setSeverity(dispute.severity);
-      setCategory(dispute.category);
+      setAssignee(dispute.assignedTo?._id);
+      setAllowComplainantResponse(dispute.allowComplainantResponse);
+      setAllowRespondentResponse(dispute.allowRespondentResponse);
+      setStatusNote("");
     }
   }, [dispute]);
 
-  if (!open || !dispute) return null;
+  if (!open) return null;
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center p-10">
+          <div className="animate-spin rounded-full border-4 border-gray-200 h-12 w-12 mb-4" style={{ borderTopColor: '#70C1F1' }}></div>
+          <div className="text-gray-600 text-lg font-medium">Đang tải chi tiết tranh chấp...</div>
+        </div>
+      </div>
+    );
+  }
+  if (!dispute) return null;
 
   const handleSaveStatus = () => {
-    if (status !== dispute.status) onChangeStatus(dispute.id, status);
+    if (status !== dispute.status || statusNote.trim()) {
+      onChangeStatus(
+        dispute._id, 
+        status, 
+        statusNote.trim() || undefined,
+        allowComplainantResponse,
+        allowRespondentResponse
+      );
+      setStatusNote("");
+    }
   };
-  const handleSaveAssign = () => onAssign(dispute.id, assignee);
+  const handleSaveAssign = () => onAssign(dispute._id, assignee);
+  /* Unused handlers - commented out
   const handleSaveSeverity = () => {
-    if (severity !== dispute.severity) onChangeSeverity(dispute.id, severity);
+    if (severity !== dispute.severity) onChangeSeverity(dispute._id, severity);
   };
   const handleSaveCategory = () => {
-    if (category !== dispute.category) onChangeCategory(dispute.id, category);
+    if (category !== dispute.disputeType) onChangeCategory(dispute._id, category);
   };
+  */
 
+  /* Unused - evidence upload removed
   const addEvidence = () => {
     if (!fileName.trim()) return;
-    onAddEvidence(dispute.id, { filename: fileName.trim(), type: fileType, url: fileUrl.trim() || undefined });
+    onAddEvidence(dispute._id, { filename: fileName.trim(), type: fileType, url: fileUrl.trim() || undefined });
     setFileName("");
     setFileType("image");
     setFileUrl("");
   };
+  */
   const addNote = () => {
     if (!note.trim()) return;
-    onAddNote(dispute.id, note.trim());
+    onAddNote(dispute._id, note.trim());
     setNote("");
+  };
+
+  const toggleAction = (action: string) => {
+    setSelectedActions(prev => 
+      prev.includes(action) 
+        ? prev.filter(a => a !== action)
+        : [...prev, action]
+    );
+  };
+
+  const handleMakeDecision = () => {
+    if (!decisionResolution.trim()) {
+      alert("Vui lòng nhập nội dung giải quyết");
+      return;
+    }
+    onMakeDecision(dispute._id, {
+      decision: adminDecision,
+      resolution: decisionResolution.trim(),
+      refundAmount: paymentAmount === "" ? undefined : Number(paymentAmount),
+      actions: selectedActions.length > 0 ? selectedActions : undefined,
+      notes: additionalNotes.trim() || undefined
+    });
+    // Reset form
+    setDecisionResolution("");
+    setPaymentAmount("");
+    setSelectedActions([]);
+    setAdditionalNotes("");
   };
 
   return (
@@ -215,7 +288,7 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
               </svg>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white">Chi tiết tranh chấp #{dispute.id}</h3>
+              <h3 className="text-xl font-bold text-white">Chi tiết tranh chấp #{dispute._id}</h3>
               <p className="text-sm text-white/90">Quản lý và xử lý tranh chấp</p>
             </div>
           </div>
@@ -245,7 +318,7 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Booking ID</div>
-                    <div className="mt-1 font-semibold text-gray-900">{dispute.bookingId ?? "—"}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.booking?._id ?? "—"}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
@@ -256,7 +329,7 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Nhóm tranh chấp</div>
-                    <div className="mt-1 font-semibold text-gray-900">{CATEGORY_LABEL[category]}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{CATEGORY_LABEL[dispute.disputeType]}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
@@ -267,7 +340,7 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Mức độ</div>
-                    <div className="mt-1"><SeverityBadge value={severity} /></div>
+                    <div className="mt-1"><SeverityBadge value={dispute.severity} /></div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
@@ -278,8 +351,8 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Người tạo</div>
-                    <div className="mt-1 font-semibold text-gray-900">{dispute.createdByName}</div>
-                    <div className="text-xs text-gray-500">{dispute.createdByRole}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.complainant.name}</div>
+                    <div className="text-xs text-gray-500">{dispute.complainant.role}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
@@ -290,8 +363,8 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Đối tượng tranh chấp</div>
-                    <div className="mt-1 font-semibold text-gray-900">{dispute.againstName ?? "—"}</div>
-                    <div className="text-xs text-gray-500">{dispute.againstRole}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.respondent.name}</div>
+                    <div className="text-xs text-gray-500">{dispute.respondent.role}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
@@ -302,9 +375,42 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   </div>
                   <div className="flex-1">
                     <div className="text-xs font-medium text-gray-500 uppercase">Admin phụ trách</div>
-                    <div className="mt-1 font-semibold text-gray-900">{dispute.assignedTo ?? "Chưa gán"}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{dispute.assignedTo?.name ?? "Chưa gán"}</div>
                   </div>
                 </div>
+                {dispute.refundBankInfo && (
+                  <div className="col-span-2">
+                    <div className="rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border-2 p-4" style={{ borderColor: "rgba(112, 193, 241, 0.3)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="rounded-lg p-2" style={{ backgroundColor: "rgba(112, 193, 241, 0.2)" }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" style={{ color: "#70C1F1" }}>
+                            <path d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" />
+                            <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="text-xs font-semibold text-gray-700 uppercase">Thông tin ngân hàng hoàn tiền</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <div className="text-gray-500 font-medium">Chủ tài khoản</div>
+                          <div className="text-gray-900 font-semibold mt-1">{dispute.refundBankInfo.accountName}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 font-medium">Số tài khoản</div>
+                          <div className="text-gray-900 font-semibold mt-1">{dispute.refundBankInfo.accountNumber}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 font-medium">Ngân hàng</div>
+                          <div className="text-gray-900 font-semibold mt-1">{dispute.refundBankInfo.bankName}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 font-medium">Chi nhánh</div>
+                          <div className="text-gray-900 font-semibold mt-1">{dispute.refundBankInfo.branch}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -318,11 +424,11 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
               <div className="space-y-3">
                 <div>
                   <div className="text-xs font-medium text-gray-500 uppercase mb-1">Tóm tắt</div>
-                  <div className="text-sm font-medium text-gray-900 bg-gray-50 rounded-lg p-3">{dispute.summary}</div>
+                  <div className="text-sm font-medium text-gray-900 bg-gray-50 rounded-lg p-3">{dispute.title}</div>
                 </div>
                 <div>
                   <div className="text-xs font-medium text-gray-500 uppercase mb-1">Chi tiết</div>
-                  <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap leading-relaxed">{dispute.detail}</div>
+                  <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap leading-relaxed">{dispute.description}</div>
                 </div>
               </div>
             </div>
@@ -338,13 +444,13 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                 <div className="absolute left-4 top-2 bottom-2 w-0.5" style={{ background: "linear-gradient(to bottom, rgba(112, 193, 241, 0.4), transparent)" }}></div>
                 <div className="space-y-4">
                   {dispute.timeline.slice().reverse().map((t, idx) => (
-                    <div key={t.id} className="relative flex items-start gap-4">
+                    <div key={t._id} className="relative flex items-start gap-4">
                       <div className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm`} style={{ backgroundColor: idx === 0 ? "#70C1F1" : "#d1d5db" }}>
                         <span className="h-2 w-2 rounded-full bg-white" />
                       </div>
                       <div className="flex-1 pt-0.5">
-                        <div className="text-sm font-medium text-gray-900">{t.label}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">{formatDate(t.at)}</div>
+                        <div className="text-sm font-medium text-gray-900">{t.description}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{formatDate(t.performedAt)}</div>
                       </div>
                     </div>
                   ))}
@@ -374,14 +480,43 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                       Lưu
                     </button>
                   </div>
+                  <div className="mt-3">
+                    <textarea
+                      value={statusNote}
+                      onChange={(e) => setStatusNote(e.target.value)}
+                      placeholder="Ghi chú về thay đổi trạng thái (tùy chọn)..."
+                      rows={2}
+                      className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm focus:outline-none transition-colors resize-none"
+                      style={{ borderColor: "#70C1F1" }}
+                    />
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowComplainantResponse}
+                        onChange={(e) => setAllowComplainantResponse(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300"
+                        style={{ accentColor: "#70C1F1" }}
+                      />
+                      <span className="text-sm text-gray-700">Cho phép người khiếu nại phản hồi</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowRespondentResponse}
+                        onChange={(e) => setAllowRespondentResponse(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300"
+                        style={{ accentColor: "#70C1F1" }}
+                      />
+                      <span className="text-sm text-gray-700">Cho phép bên bị khiếu nại phản hồi</span>
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Admin phụ trách</label>
                   <div className="flex items-center gap-2">
-                    <select value={assignee ?? ""} onChange={(e) => setAssignee(e.target.value || undefined)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
-                      <option value="">Chưa gán</option>
-                      {ADMIN_LIST.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
+                    <AdminAssignSelect value={assignee} onChange={v => setAssignee(v || undefined)} currentUserId={localStorage.getItem('userId') || undefined} />
                     <button onClick={handleSaveAssign} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm">
                       Gán
                     </button>
@@ -390,29 +525,16 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Nhóm tranh chấp</label>
                   <div className="flex items-center gap-2">
-                    <select value={category} onChange={(e) => setCategory(e.target.value as DisputeCategory)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
-                      {(["Payment","Service Quality","Schedule","Behavior","Other"] as DisputeCategory[]).map(c => (
-                        <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
-                      ))}
-                    </select>
-                    <button onClick={handleSaveCategory} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 transition-colors shadow-sm">
-                      Lưu
-                    </button>
+                    <input
+                      type="text"
+                      value={dispute ? CATEGORY_LABEL[dispute.disputeType] : ""}
+                      readOnly
+                      className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium bg-gray-100 text-gray-500 cursor-not-allowed focus:outline-none"
+                      style={{ borderColor: "#70C1F1" }}
+                    />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Mức độ nghiêm trọng</label>
-                  <div className="flex items-center gap-2">
-                    <select value={severity} onChange={(e) => setSeverity(e.target.value as DisputeSeverity)} className="flex-1 rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors" style={{ borderColor: "#70C1F1" }}>
-                      {(["low","medium","high"] as DisputeSeverity[]).map(s => (
-                        <option key={s} value={s}>{SEVERITY_LABEL[s]}</option>
-                      ))}
-                    </select>
-                    <button onClick={handleSaveSeverity} className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors shadow-sm">
-                      Lưu
-                    </button>
-                  </div>
-                </div>
+                {/* Đã loại bỏ phần chỉnh mức độ nghiêm trọng theo yêu cầu */}
               </div>
             </div>
 
@@ -429,36 +551,28 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
               {dispute.evidence.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 mb-4">
                   {dispute.evidence.map(ev => (
-                    <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg border-2 transition-colors bg-gray-50" style={{ borderColor: "rgba(112, 193, 241, 0.3)" }}>
+                    <div key={ev._id} className="flex items-center gap-3 p-3 rounded-lg border-2 transition-colors bg-gray-50" style={{ borderColor: "rgba(112, 193, 241, 0.3)" }}>
                       {ev.type === 'image' && ev.url && (
                         <img 
                           src={ev.url} 
-                          alt={ev.filename}
+                          alt={ev.description || "Evidence"}
                           className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
                           onClick={() => window.open(ev.url, '_blank')}
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-gray-900 truncate">{ev.filename}</div>
+                        <div className="font-medium text-sm text-gray-900 truncate">{ev.description || "Mình chứng"}</div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {ev.uploadedBy} • {formatDate(ev.uploadedAt)}
+                          {ev.type} • {formatDate(ev.uploadedAt)} • <span className="font-medium">{ev.uploadedBy?.role === 'careseeker' ? 'Người khiếu nại' : 'Người bị khiếu nại'}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <a 
-                          href={ev.url || "#"} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                        <button
+                          onClick={() => setPreviewEvidence(ev)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:opacity-90"
                           style={{ backgroundColor: "#70C1F1" }}
                         >
                           Xem
-                        </a>
-                        <button 
-                          onClick={() => onDeleteEvidence(dispute.id, ev.id)} 
-                          className="rounded-lg border-2 border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
-                        >
-                          Xoá
                         </button>
                       </div>
                     </div>
@@ -472,68 +586,6 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                   <p className="mt-2 text-sm text-gray-500">Chưa có minh chứng nào</p>
                 </div>
               )}
-              <div className="space-y-3">
-                <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center transition-colors bg-gradient-to-br from-gray-50 to-white">
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    id="evidence-upload"
-                    accept="image/*,.pdf,.doc,.docx,.mp4,.avi"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFileName(file.name);
-                        setFileType(file.type.startsWith('image/') ? 'image' : 
-                                   file.type === 'application/pdf' ? 'pdf' :
-                                   file.type.includes('document') ? 'docx' :
-                                   file.type.startsWith('video/') ? 'video' : 'other');
-                        const url = URL.createObjectURL(file);
-                        setFileUrl(url);
-                      }
-                    }}
-                  />
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mx-auto h-10 w-10 text-gray-400 mb-3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  <label 
-                    htmlFor="evidence-upload" 
-                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white cursor-pointer shadow-sm transition-colors"
-                    style={{ backgroundColor: "#70C1F1" }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Chọn file minh chứng
-                  </label>
-                  <p className="mt-2 text-xs text-gray-500">Hỗ trợ: Ảnh, PDF, Word, Video</p>
-                </div>
-                {fileName && (
-                  <div className="flex items-center gap-3 p-4 rounded-xl border-2" style={{ backgroundColor: "rgba(112, 193, 241, 0.1)", borderColor: "#70C1F1" }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
-                      <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
-                      <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
-                    </svg>
-                    <span className="flex-1 text-sm font-medium truncate" style={{ color: "#70C1F1" }}>{fileName}</span>
-                    <button 
-                      onClick={addEvidence} 
-                      className="rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors shadow-sm"
-                      style={{ backgroundColor: "#70C1F1" }}
-                    >
-                      Upload
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setFileName("");
-                        setFileUrl("");
-                        setFileType("image");
-                      }} 
-                      className="rounded-lg bg-gray-500 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-600 transition-colors"
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
@@ -543,13 +595,13 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                 </svg>
                 <h4 className="font-semibold text-gray-900">Ghi chú nội bộ</h4>
                 <span className="ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: "#70C1F1" }}>
-                  {dispute.notes.length}
+                  {dispute.internalNotes.length}
                 </span>
               </div>
-              {dispute.notes.length > 0 ? (
+              {dispute.internalNotes.length > 0 ? (
                 <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                  {dispute.notes.map(n => (
-                    <div key={n.id} className="rounded-lg border-2 border-gray-100 p-3 bg-gradient-to-br from-gray-50 to-white transition-colors">
+                  {dispute.internalNotes.map(n => (
+                    <div key={n._id} className="rounded-lg border-2 border-gray-100 p-3 bg-gradient-to-br from-gray-50 to-white transition-colors">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(112, 193, 241, 0.2)" }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" style={{ color: "#70C1F1" }}>
@@ -557,11 +609,11 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                           </svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-sm text-gray-900">{n.author}</div>
-                          <div className="text-xs text-gray-500">{formatDate(n.createdAt)}</div>
+                          <NoteUserName userId={n.addedBy} />
+                          <div className="text-xs text-gray-500">{formatDate(n.addedAt)}</div>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-700 leading-relaxed pl-9">{n.content}</div>
+                      <div className="text-sm text-gray-700 leading-relaxed pl-9">{n.note}</div>
                     </div>
                   ))}
                 </div>
@@ -594,6 +646,114 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
                 </button>
               </div>
             </div>
+
+            {/* Decision Section */}
+            <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                  <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM9 11.25a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 17H15a.75.75 0 000-1.5h-4.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 11H9z" clipRule="evenodd" />
+                  <path d="M12 7a1 1 0 100-2 1 1 0 000 2z" />
+                </svg>
+                <h4 className="font-semibold text-gray-900">Đưa ra quyết định</h4>
+              </div>
+              {dispute.adminDecision?.decision ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-green-600">
+                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-semibold text-green-800">Đã có quyết định</span>
+                    </div>
+                    <div className="text-xs text-green-700 space-y-1">
+                      <div><strong>Kết quả:</strong> {dispute.adminDecision.decision === 'favor_complainant' ? 'Ủng hộ người khiếu nại' : dispute.adminDecision.decision === 'favor_respondent' ? 'Ủng hộ người bị khiếu nại' : dispute.adminDecision.decision === 'partial_favor' ? 'Ủng hộ một phần' : 'Bác bỏ'}</div>
+                      {dispute.adminDecision.resolution && <div><strong>Giải quyết:</strong> {dispute.adminDecision.resolution}</div>}
+                      {dispute.adminDecision.decidedAt && <div><strong>Thời gian:</strong> {formatDate(dispute.adminDecision.decidedAt)}</div>}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Kết quả quyết định</label>
+                    <select 
+                      value={adminDecision} 
+                      onChange={(e) => setAdminDecision(e.target.value as any)} 
+                      className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors"
+                      style={{ borderColor: "#70C1F1" }}
+                    >
+                      <option value="favor_complainant">Ủng hộ người khiếu nại</option>
+                      <option value="favor_respondent">Ủng hộ người bị khiếu nại</option>
+                      <option value="partial_favor">Ủng hộ một phần</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Nội dung giải quyết *</label>
+                    <textarea 
+                      value={decisionResolution} 
+                      onChange={(e) => setDecisionResolution(e.target.value)} 
+                      placeholder="Mô tả chi tiết cách giải quyết tranh chấp..."
+                      rows={4}
+                      className="w-full resize-none rounded-lg border-2 border-gray-200 p-3 text-sm focus:outline-none transition-colors"
+                      style={{ borderColor: "#70C1F1" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Số tiền hoàn/bồi thường (VNĐ)</label>
+                    <input 
+                      type="number" 
+                      value={paymentAmount} 
+                      onChange={(e) => setPaymentAmount(e.target.value === "" ? "" : Number(e.target.value))} 
+                      placeholder="Nhập số tiền cần hoàn trả hoặc bồi thường"
+                      className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-medium focus:outline-none transition-colors"
+                      style={{ borderColor: "#70C1F1" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Hành động thực hiện</label>
+                    <div className="space-y-2">
+                      {['warning_issued', 'suspension', 'payment_processed'].map(action => (
+                        <label key={action} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedActions.includes(action)}
+                            onChange={() => toggleAction(action)}
+                            className="w-4 h-4 rounded border-gray-300"
+                            style={{ accentColor: "#70C1F1" }}
+                          />
+                          <span className="text-sm text-gray-700">
+                            {action === 'warning_issued' ? 'Cảnh cáo' : 
+                             action === 'suspension' ? 'Tạm ngưng' :
+                             'Đã xử lý thanh toán'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">Ghi chú</label>
+                    <textarea 
+                      value={additionalNotes} 
+                      onChange={(e) => setAdditionalNotes(e.target.value)} 
+                      placeholder="Ghi chú bổ sung..."
+                      rows={2}
+                      className="w-full resize-none rounded-lg border-2 border-gray-200 p-3 text-sm focus:outline-none transition-colors"
+                      style={{ borderColor: "#70C1F1" }}
+                    />
+                  </div>
+                  <button 
+                    onClick={handleMakeDecision} 
+                    className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#70C1F1" }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                    Xác nhận quyết định
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -612,32 +772,134 @@ const DisputeDetailModal: React.FC<DisputeDetailModalProps> = ({ open, dispute, 
           </button>
         </div>
       </div>
+
+      {/* Evidence Preview Modal */}
+      {previewEvidence && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setPreviewEvidence(null)}>
+          <div className="relative max-w-4xl w-full max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ background: "linear-gradient(to right, #70C1F1, #5AB4E8)" }}>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-white/20 p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white">
+                    <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Chi tiết minh chứng</h3>
+                  <p className="text-xs text-white/90">{previewEvidence.type}</p>
+                </div>
+              </div>
+              <button onClick={() => setPreviewEvidence(null)} className="rounded-lg p-2 text-white hover:bg-white/20 transition-colors" aria-label="Đóng">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              {previewEvidence.type === 'image' && previewEvidence.url && (
+                <div className="mb-6 flex justify-center">
+                  <img 
+                    src={previewEvidence.url} 
+                    alt={previewEvidence.description || "Evidence"}
+                    className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain"
+                  />
+                </div>
+              )}
+              {previewEvidence.type !== 'image' && previewEvidence.url && (
+                <div className="mb-6 p-8 bg-white rounded-lg border-2 border-dashed border-gray-300 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mx-auto h-16 w-16 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <p className="mt-4 text-sm font-medium text-gray-700">File {previewEvidence.type.toUpperCase()}</p>
+                  <a 
+                    href={previewEvidence.url} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors"
+                    style={{ backgroundColor: "#70C1F1" }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Tải xuống
+                  </a>
+                </div>
+              )}
+              <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                    <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97z" clipRule="evenodd" />
+                  </svg>
+                  <h4 className="font-semibold text-gray-900">Mô tả</h4>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {previewEvidence.description || "Không có mô tả"}
+                </p>
+              </div>
+              <div className="mt-4 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" style={{ color: "#70C1F1" }}>
+                    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                  </svg>
+                  <h4 className="font-semibold text-gray-900">Thông tin</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 uppercase mb-1">Loại file</div>
+                    <div className="text-sm font-semibold text-gray-900">{previewEvidence.type.toUpperCase()}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 uppercase mb-1">Thời gian tải lên</div>
+                    <div className="text-sm font-semibold text-gray-900">{formatDate(previewEvidence.uploadedAt)}</div>
+                  </div>
+                </div>
+                {previewEvidence.url && (
+                  <div className="mt-4">
+                    <a 
+                      href={previewEvidence.url} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+                      style={{ color: "#70C1F1" }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                      </svg>
+                      Mở trong tab mới
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-type SortKey = "updatedAt" | "severity";
-
 const DisputeRow: React.FC<{
-  d: Dispute;
-  onView: (d: Dispute) => void;
+  d: AdminDispute;
+  onView: (d: AdminDispute) => void;
 }> = ({ d, onView }) => {
+  // Nếu status hoặc các trường quan trọng bị thiếu, không render row này
+  if (!d || !d.status || !d._id || !d.booking) return null;
   return (
     <tr 
       className="border-b last:border-0 cursor-pointer hover:bg-gray-50 transition-colors"
       onClick={() => onView(d)}
     >
-      <td className="px-4 py-3 text-sm text-gray-700">{d.id}</td>
-      <td className="px-4 py-3 text-sm text-gray-700">{d.bookingId ?? "—"}</td>
-      <td className="px-4 py-3 text-sm text-gray-700">{CATEGORY_LABEL[d.category]}</td>
+      <td className="px-4 py-3 text-sm text-gray-700">{d._id}</td>
+      <td className="px-4 py-3 text-sm text-gray-700">{d.booking._id}</td>
+      <td className="px-4 py-3 text-sm text-gray-700">{CATEGORY_LABEL[d.disputeType]}</td>
       <td className="px-4 py-3"><SeverityBadge value={d.severity} /></td>
       <td className="px-4 py-3"><StatusBadge value={d.status} /></td>
       <td className="px-4 py-3 text-sm text-gray-700">
-        <div className="font-medium">{d.createdByName}</div>
-        <div className="text-gray-500">{d.createdByRole}</div>
+        <div className="font-medium">{d.complainant.name}</div>
+        <div className="text-gray-500 capitalize">{d.complainant.role}</div>
       </td>
       <td className="px-4 py-3 text-sm text-gray-700">
-        <div className="text-gray-700">{d.assignedTo ?? "Chưa gán"}</div>
+        <div className="text-gray-700">{d.assignedTo?.name ?? "Chưa gán"}</div>
       </td>
       <td className="px-4 py-3 text-sm text-gray-700">{formatDate(d.updatedAt)}</td>
     </tr>
@@ -647,7 +909,21 @@ const DisputeRow: React.FC<{
 const PAGE_SIZE = 10;
 
 const AdminDisputeManagementPage: React.FC = () => {
-  const [disputes, setDisputes] = useState<Dispute[]>(() => generateMockDisputes());
+  const [disputes, setDisputes] = useState<AdminDispute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({ under_review: 0, resolved: 0, pending: 0 });
+
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info';
+    message: string;
+  }>({
+    show: false,
+    type: 'info',
+    message: ''
+  });
 
   // filters
   const [category, setCategory] = useState<"All" | DisputeCategory>("All");
@@ -658,129 +934,306 @@ const AdminDisputeManagementPage: React.FC = () => {
   const [debounced, setDebounced] = useState("");
 
   // sorting & pagination
-  const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
+  const [sortKey, setSortKey] = useState<"updatedAt" | "severity">("updatedAt");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [page, setPage] = useState(1);
+
+  const [modal, setModal] = useState<{ open: boolean; disputeId: string | null }>({ open: false, disputeId: null });
+  const [detailDispute, setDetailDispute] = useState<AdminDispute | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim().toLowerCase()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const stats = useMemo(() => {
-    const counters = { in_review: 0, resolved: 0, refunded: 0 } as Record<string, number>;
-    for (const d of disputes) {
-      if (d.status === "in_review") counters.in_review++;
-      if (d.status === "resolved") counters.resolved++;
-      if (d.status === "refunded") counters.refunded++;
+  const fetchDisputes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        page,
+        limit: PAGE_SIZE,
+      };
+      if (status !== "All") params.status = status;
+      if (severity !== "All") params.severity = severity;
+      if (category !== "All") params.disputeType = category;
+
+      console.log('Fetching disputes with params:', params);
+      const response = await getAllDisputesForAdmin(params);
+      console.log('Disputes response:', response);
+      // Debug: print all dispute statuses
+      if (response?.data?.disputes) {
+        response.data.disputes.forEach((d: any) => {
+          console.log(`[DEBUG] Dispute ${d._id} status:`, d.status);
+        });
+      }
+      setDisputes(response.data.disputes);
+      setTotalPages(response.data.pagination.totalPages);
+      setTotalCount(response.data.pagination.total);
+      // Update stats
+      const statistics = response.data.statistics;
+      setStats({
+        under_review: statistics.byStatus.under_review || 0,
+        resolved: statistics.byStatus.resolved || 0,
+        pending: statistics.byStatus.pending || 0,
+      });
+    } catch (error: any) {
+      console.error('Dispute fetch error:', error);
+      console.error('Error details:', error.response?.data);
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || error.message || 'Không thể tải dữ liệu tranh chấp'
+      });
+      // Set empty data on error to prevent blank page
+      setDisputes([]);
+      setTotalPages(1);
+      setTotalCount(0);
+      setStats({ under_review: 0, resolved: 0, pending: 0 });
+    } finally {
+      setLoading(false);
     }
-    return counters;
-  }, [disputes]);
+  }, [page, status, severity, category]);
+
+  useEffect(() => {
+    fetchDisputes();
+  }, [fetchDisputes]);
 
   const filtered = useMemo(() => {
-    const items = disputes.filter(d => {
-      if (category !== "All" && d.category !== category) return false;
-      if (status !== "All" && d.status !== status) return false;
-      if (severity !== "All" && d.severity !== severity) return false;
-      if (creator !== "All" && d.createdByRole !== creator) return false;
-      if (debounced) {
-        const hay = `${d.id} ${d.bookingId ?? ""} ${d.createdByName} ${d.createdByEmail ?? ""} ${d.summary}`.toLowerCase();
-        if (!hay.includes(debounced)) return false;
-      }
-      return true;
-    });
+    let items = [...disputes];
+    
+    if (creator !== "All") {
+      items = items.filter(d => d.complainant?.role === creator);
+    }
+    
+    if (debounced) {
+      items = items.filter(d => {
+        const hay = `${d._id} ${d.booking?._id || ''} ${d.complainant?.name || ''} ${d.complainant?.email || ''} ${d.title}`.toLowerCase();
+        return hay.includes(debounced);
+      });
+    }
+    
     const sorted = items.sort((a, b) => {
       if (sortKey === "updatedAt") {
         const da = new Date(a.updatedAt).getTime();
         const db = new Date(b.updatedAt).getTime();
         return sortAsc ? da - db : db - da;
       }
-      const sevOrder: Record<DisputeSeverity, number> = { low: 0, medium: 1, high: 2 };
+      const sevOrder: Record<DisputeSeverity, number> = { low: 0, medium: 1, high: 2, critical: 3 };
       return sortAsc ? sevOrder[a.severity] - sevOrder[b.severity] : sevOrder[b.severity] - sevOrder[a.severity];
     });
+    
     return sorted;
-  }, [disputes, category, status, severity, creator, debounced, sortKey, sortAsc]);
+  }, [disputes, creator, debounced, sortKey, sortAsc]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
+  const pageItems = filtered;
 
-  useEffect(() => { setPage(1); }, [category, status, severity, creator, debounced, sortKey, sortAsc]);
+  useEffect(() => { 
+    if (page !== 1) setPage(1); 
+  }, [category, status, severity, creator, debounced, sortKey, sortAsc]);
 
-  const openDetail = (d: Dispute) => setModal({ open: true, dispute: d });
+  const openDetail = (d: AdminDispute) => setModal({ open: true, disputeId: d._id });
+  // Fetch dispute detail when modal opens
+  useEffect(() => {
+    if (modal.open && modal.disputeId) {
+      setDetailLoading(true);
+      getDisputeByIdForAdmin(modal.disputeId)
+        .then(res => setDetailDispute(res.data))
+        .catch(() => setDetailDispute(null))
+        .finally(() => setDetailLoading(false));
+    } else {
+      setDetailDispute(null);
+    }
+  }, [modal]);
 
-  const changeStatus = (id: string, s: DisputeStatus) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      status: s,
-      updatedAt: new Date().toISOString(),
-      timeline: [...d.timeline, { id: `T-${id}-${Date.now()}`, type: "status_change", label: `Trạng thái: ${STATUS_LABEL[d.status]} → ${STATUS_LABEL[s]}`, at: new Date().toISOString(), meta: { from: d.status, to: s } }],
-    } : d));
+  const changeStatus = async (
+    id: string, 
+    s: DisputeStatus, 
+    note?: string, 
+    allowComplainantResponse?: boolean, 
+    allowRespondentResponse?: boolean
+  ) => {
+    try {
+      await updateDisputeStatus(id, {
+        status: s,
+        note,
+        allowComplainantResponse,
+        allowRespondentResponse
+      });
+      setNotification({
+        show: true,
+        type: 'success',
+        message: 'Cập nhật trạng thái thành công'
+      });
+      fetchDisputes();
+      // Refresh detail if still open
+      if (modal.open && modal.disputeId === id) {
+        getDisputeByIdForAdmin(id)
+          .then(res => setDetailDispute(res.data))
+          .catch(() => {});
+      }
+    } catch (error: any) {
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || 'Không thể cập nhật trạng thái'
+      });
+    }
   };
 
-  const assignTo = (id: string, a?: string) => {
-    setDisputes(prev => prev.map(d => d.id === id ? { ...d, assignedTo: a, updatedAt: new Date().toISOString() } : d));
+  const assignTo = async (id: string, adminId?: string) => {
+    if (!adminId) return;
+    try {
+      const result = await assignDisputeToAdmin(id, adminId);
+      console.log('[DEBUG] Dispute after assignment:', result?.data);
+      setNotification({
+        show: true,
+        type: 'success',
+        message: 'Phân công thành công'
+      });
+      fetchDisputes();
+    } catch (error: any) {
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || 'Không thể phân công'
+      });
+    }
   };
 
-  const addEvidence = (id: string, e: { filename: string; type: EvidenceType; url?: string }) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      evidence: [...d.evidence, { id: `E-${Date.now()}`, filename: e.filename, type: e.type, url: e.url, uploadedBy: "Admin", uploadedAt: new Date().toISOString() }],
-      timeline: [...d.timeline, { id: `T-${Date.now()}`, type: "evidence_added", label: `Thêm minh chứng: ${e.filename}`, at: new Date().toISOString() }],
-      updatedAt: new Date().toISOString(),
-    } : d));
+  const addNote = async (id: string, content: string) => {
+    try {
+      await addDisputeInternalNote(id, content);
+      setNotification({
+        show: true,
+        type: 'success',
+        message: 'Thêm ghi chú thành công'
+      });
+      fetchDisputes();
+    } catch (error: any) {
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || 'Không thể thêm ghi chú'
+      });
+    }
   };
 
-  const deleteEvidence = (id: string, evidenceId: string) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      evidence: d.evidence.filter(ev => ev.id !== evidenceId),
-      updatedAt: new Date().toISOString(),
-    } : d));
+  const changeSeverity = async (id: string, severity: DisputeSeverity) => {
+    try {
+      await updateDisputeSeverity(id, severity);
+      setNotification({
+        show: true,
+        type: 'success',
+        message: 'Cập nhật mức độ thành công'
+      });
+      fetchDisputes();
+    } catch (error: any) {
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || 'Không thể cập nhật mức độ'
+      });
+    }
   };
 
-  const addNote = (id: string, content: string) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      notes: [...d.notes, { id: `N-${Date.now()}`, author: "Admin", content, createdAt: new Date().toISOString() }],
-      timeline: [...d.timeline, { id: `T-${Date.now()}`, type: "note_added", label: `Thêm ghi chú`, at: new Date().toISOString() }],
-      updatedAt: new Date().toISOString(),
-    } : d));
+  const changeCategory = async (_id: string, _category: DisputeCategory) => {
+    // API doesn't seem to have endpoint for this, so just show notification
+    setNotification({
+      show: true,
+      type: 'info',
+      message: 'Chức năng này chưa được hỗ trợ'
+    });
   };
 
-  const changeSeverity = (id: string, severity: DisputeSeverity) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      severity,
-      updatedAt: new Date().toISOString(),
-      timeline: [...d.timeline, { id: `T-${Date.now()}`, type: "status_change", label: `Mức độ: ${SEVERITY_LABEL[d.severity]} → ${SEVERITY_LABEL[severity]}`, at: new Date().toISOString(), meta: { from: d.severity, to: severity } }],
-    } : d));
+  const addEvidence = (_id: string, _e: { filename: string; type: EvidenceType; url?: string }) => {
+    setNotification({
+      show: true,
+      type: 'info',
+      message: 'Chức năng này chưa được hỗ trợ'
+    });
   };
 
-  const changeCategory = (id: string, category: DisputeCategory) => {
-    setDisputes(prev => prev.map(d => d.id === id ? {
-      ...d,
-      category,
-      updatedAt: new Date().toISOString(),
-      timeline: [...d.timeline, { id: `T-${Date.now()}`, type: "status_change", label: `Nhóm: ${CATEGORY_LABEL[d.category]} → ${CATEGORY_LABEL[category]}`, at: new Date().toISOString(), meta: { from: d.category, to: category } }],
-    } : d));
+  /* Unused - deleteEvidence function
+  const deleteEvidence = (_id: string, _evidenceId: string) => {
+    setNotification({
+      show: true,
+      type: 'info',
+      message: 'Chức năng này chưa được hỗ trợ'
+    });
   };
+  */
 
-  const [modal, setModal] = useState<{ open: boolean; dispute: Dispute | null }>({ open: false, dispute: null });
+  const makeDecision = async (
+    id: string,
+    decisionData: {
+      decision: string;
+      resolution: string;
+      refundAmount?: number;
+      actions?: string[];
+      notes?: string;
+    }
+  ) => {
+    try {
+      console.log('[DEBUG] Making decision with data:', decisionData);
+      await makeAdminDecision(id, decisionData);
+      // Automatically update status to resolved
+      await updateDisputeStatus(id, {
+        status: 'resolved',
+        note: 'Đã đưa ra quyết định và giải quyết tranh chấp',
+        allowComplainantResponse: false,
+        allowRespondentResponse: false
+      });
+      setNotification({
+        show: true,
+        type: 'success',
+        message: 'Đưa ra quyết định và cập nhật trạng thái thành công'
+      });
+      fetchDisputes();
+      // Refresh detail
+      if (modal.open && modal.disputeId === id) {
+        getDisputeByIdForAdmin(id)
+          .then(res => setDetailDispute(res.data))
+          .catch(() => {});
+      }
+    } catch (error: any) {
+      console.error('[DEBUG] Decision error:', error.response?.data || error);
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.response?.data?.message || 'Không thể đưa ra quyết định'
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý Tranh chấp</h1>
-        <p className="mt-1 text-sm text-gray-600">Theo dõi và xử lý các tranh chấp giữa Người chăm sóc và Người cần chăm sóc.</p>
-      </div>
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
+
+      {loading && disputes.length === 0 ? (
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-gray-200" style={{ borderTopColor: '#70C1F1' }}></div>
+            <p className="mt-4 text-sm text-gray-600">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Quản lý Tranh chấp</h1>
+            <p className="mt-1 text-sm text-gray-600">Theo dõi và xử lý các tranh chấp giữa Người chăm sóc và Người thuê.</p>
+          </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title="Đang xem xét" value={stats.in_review} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25 21.75 12 12 21.75 2.25 12 12 2.25Z"/></svg>} />
+        <StatCard title="Đang xem xét" value={stats.under_review} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25 21.75 12 12 21.75 2.25 12 12 2.25Z"/></svg>} />
         <StatCard title="Đã giải quyết" value={stats.resolved} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M9 12.75 11.25 15l3.75-3.75"/></svg>} />
-        <StatCard title="Đã hoàn tiền" value={stats.refunded} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12h18"/></svg>} />
+        <StatCard title="Chờ xử lý" value={stats.pending} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12h18"/></svg>} />
       </div>
 
       <div className="rounded-xl bg-white p-4 shadow">
@@ -788,7 +1241,7 @@ const AdminDisputeManagementPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <select value={category} onChange={(e) => setCategory(e.target.value as any)} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm">
               <option value="All">Tất cả nhóm</option>
-              {(["Payment","Service Quality","Schedule","Behavior","Other"] as DisputeCategory[]).map(c => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
+              {(["service_quality","payment_issue","schedule_conflict","unprofessional_behavior","safety_concern","other"] as DisputeCategory[]).map(c => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
             </select>
             <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm">
               <option value="All">Tất cả trạng thái</option>
@@ -796,12 +1249,12 @@ const AdminDisputeManagementPage: React.FC = () => {
             </select>
             <select value={severity} onChange={(e) => setSeverity(e.target.value as any)} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm">
               <option value="All">Tất cả mức độ</option>
-              {(["low","medium","high"] as DisputeSeverity[]).map(s => <option key={s} value={s}>{SEVERITY_LABEL[s]}</option>)}
+              {(["low","medium","high","critical"] as DisputeSeverity[]).map(s => <option key={s} value={s}>{SEVERITY_LABEL[s]}</option>)}
             </select>
             <select value={creator} onChange={(e) => setCreator(e.target.value as any)} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm">
               <option value="All">Tất cả người tạo</option>
-              <option value="Care Seeker">Người cần chăm sóc</option>
-              <option value="Caregiver">Người chăm sóc</option>
+              <option value="careseeker">Người thuê</option>
+              <option value="caregiver">Người chăm sóc</option>
             </select>
           </div>
           <div className="relative">
@@ -833,7 +1286,7 @@ const AdminDisputeManagementPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {pageItems.map((d) => (
-                <DisputeRow key={d.id} d={d} onView={openDetail} />
+                <DisputeRow key={d._id} d={d} onView={openDetail} />
               ))}
               {pageItems.length === 0 && (
                 <tr>
@@ -845,7 +1298,7 @@ const AdminDisputeManagementPage: React.FC = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">Hiển thị {pageItems.length} / {filtered.length} kết quả</div>
+          <div className="text-sm text-gray-600">Hiển thị {pageItems.length} / {totalCount} kết quả</div>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50">Trước</button>
             <div className="text-sm">Trang {page} / {totalPages}</div>
@@ -856,16 +1309,19 @@ const AdminDisputeManagementPage: React.FC = () => {
 
       <DisputeDetailModal
         open={modal.open}
-        dispute={modal.dispute}
-        onClose={() => setModal({ open: false, dispute: null })}
+        dispute={detailDispute}
+        loading={detailLoading}
+        onClose={() => setModal({ open: false, disputeId: null })}
         onChangeStatus={changeStatus}
         onAssign={assignTo}
         onChangeSeverity={changeSeverity}
         onChangeCategory={changeCategory}
         onAddEvidence={addEvidence}
-        onDeleteEvidence={deleteEvidence}
         onAddNote={addNote}
+        onMakeDecision={makeDecision}
       />
+        </>
+      )}
     </div>
   );
 };

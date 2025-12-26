@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiStar, FiMapPin, FiClock, FiUser, FiMail, FiPhone, FiCalendar, FiAward, FiShield, FiHeart } from 'react-icons/fi';
+import { FiArrowLeft, FiStar, FiMapPin, FiClock, FiUser, FiMail, FiPhone,  FiAward, FiShield, FiHeart } from 'react-icons/fi';
 
 interface CertificateFile {
   id: string;
@@ -35,7 +35,7 @@ interface CaregiverProfile {
       skills?: string;
       languages?: string[];
       certificates?: string;
-      certificateFiles?: CertificateFile[] | string[];
+      certificateFiles?: CertificateFile[];
       skillItems?: {
         id: string;
         name: string;
@@ -114,14 +114,14 @@ const CaregiverProfilePage: React.FC = () => {
                   {
                     id: 'cert1',
                     url: 'https://via.placeholder.com/400x300?text=Certificate+1',
-                    status: 'approved',
+                    status: 'approved' as 'approved',
                     uploadedAt: '2024-01-15T10:00:00Z',
                     approvedAt: '2024-01-16T10:00:00Z'
                   },
                   {
                     id: 'cert2',
                     url: 'https://via.placeholder.com/400x300?text=Certificate+2',
-                    status: 'approved',
+                    status: 'approved' as 'approved',
                     uploadedAt: '2024-01-20T10:00:00Z',
                     approvedAt: '2024-01-21T10:00:00Z'
                   }

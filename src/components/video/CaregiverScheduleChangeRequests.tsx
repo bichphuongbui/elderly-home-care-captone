@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiBell, FiCalendar, FiClock, FiUser, FiMessageSquare, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiBell, FiCalendar, FiClock, FiMessageSquare, FiCheck, FiX } from 'react-icons/fi';
 import { ScheduleChangeRequest, getPendingScheduleChangeRequests, acceptScheduleChangeRequest, rejectScheduleChangeRequest, formatDateTime, getStatusColor, getStatusText } from '../../services/schedule-change.service';
 
 interface CaregiverScheduleChangeRequestsProps {

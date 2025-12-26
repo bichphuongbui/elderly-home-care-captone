@@ -15,6 +15,7 @@ import AdminTrainingPage from '../pages/admin/AdminTrainingPage';
 import CourseFilesPage from '../pages/admin/CourseFilesPage';
 import CourseFormPage from '../pages/admin/CourseFormPage';
 import AdminCourseDetailPage from '../pages/admin/AdminCourseDetailPage';
+import AdminLessonViewerPage from '../pages/admin/AdminLessonViewerPage';
 import AdminLayout from '../layouts/AdminLayout';
 import CareSeekerLayout from '../layouts/CareSeekerLayout';
 import CareGiverLayout from '../layouts/CareGiverLayout';
@@ -32,13 +33,13 @@ import CaregiverDetailPage from '../pages/admin/CaregiverDetailPage';
 import CertificateApprovalPage from '../pages/admin/CertificateApprovalPage';
 import AdminReviewManagementPage from '../pages/admin/AdminReviewManagementPage';
 import AdminDisputeManagementPage from '../pages/admin/AdminDisputeManagementPage';
+import AdminCaregiverWalletPage from '../pages/admin/AdminCaregiverWalletPage';
 import ServicePackageManagementPage from '../pages/admin/ServicePackageManagementPage';
 import RejectedPage from '../pages/caregiver/RejectedPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import CaregiverProfilePage from '../pages/caregiver/CaregiverProfilePage';
 import CaregiverTrainingPage from '../pages/caregiver/CaregiverTrainingPage';
 import CourseDetailPage from '../pages/caregiver/CourseDetailPage';
-import LessonViewerPage from '../pages/caregiver/LessonViewerPage';
 import BookingRequestPage from '../pages/caregiver/BookingRequestPage';
 import BookingDetailPage from '../pages/caregiver/BookingDetailPage';
 import BookingReportPage from '../pages/caregiver/BookingReportPage';
@@ -55,6 +56,8 @@ import SystemFeedbackPage from '../pages/SystemFeedbackPage';
 import ComplaintPage from '../pages/caregiver/ComplaintPage';
 import ComplaintReviewPage from '../pages/caregiver/ComplaintReviewPage';
 import ServiceReviewEditorPage from '../pages/caregiver/ServiceReviewEditorPage';
+import VerifyEmailPage from '../pages/VerifyEmailPage';
+import UserDetailPage from '../pages/admin/UserDetailPage';
 
 // Types cho user role
 type UserRole = 'Care Seeker' | 'Caregiver' | 'Admin' | 'Guest';
@@ -283,6 +286,14 @@ const AppRoutes: React.FC = () => {
           } 
         />
         <Route 
+          path="/verify-email" 
+          element={
+            <ProtectedRoute user={user} requireAuth={false}>
+              <VerifyEmailPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/login" 
           element={
             <ProtectedRoute user={user} requireAuth={false}>
@@ -362,7 +373,6 @@ const AppRoutes: React.FC = () => {
           <Route path="withdraw" element={<WithdrawPage />} />
           <Route path="training" element={<CaregiverTrainingPage />} />
           <Route path="training/:id" element={<CourseDetailPage />} />
-          <Route path="training/:id/lesson/:lessonId" element={<LessonViewerPage />} />
           <Route path="reviews" element={<CaregiverReviewPage />} />
           <Route path="video-requests" element={<VideoRequestPage />} />
           <Route path="video-call" element={<VideoCallPage />} />
@@ -384,9 +394,11 @@ const AppRoutes: React.FC = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<UserManagementPage />} />
+          <Route path="users/:userId" element={<UserDetailPage />} />
           <Route path="training" element={<AdminTrainingPage />} />
           <Route path="training/new" element={<CourseFormPage />} />
           <Route path="training/:courseId" element={<AdminCourseDetailPage />} />
+          <Route path="training/:courseId/lesson/:lessonId" element={<AdminLessonViewerPage />} />
           <Route path="training/:courseId/edit" element={<CourseFormPage />} />
           <Route path="training/:courseId/files" element={<CourseFilesPage />} />
           <Route path="caregiver-approval" element={<CaregiverApprovalPage />} />
@@ -394,6 +406,7 @@ const AppRoutes: React.FC = () => {
           <Route path="caregivers/:id" element={<CaregiverDetailPage />} />
           <Route path="feedback" element={<AdminReviewManagementPage />} />
           <Route path="disputes" element={<AdminDisputeManagementPage />} />
+          <Route path="caregiver-wallets" element={<AdminCaregiverWalletPage />} />
           <Route path="packages" element={<ServicePackageManagementPage />} />
           <Route path="blog" element={<div className="p-4">Blog</div>} />
           <Route path="faq" element={<div className="p-4">FAQ</div>} />

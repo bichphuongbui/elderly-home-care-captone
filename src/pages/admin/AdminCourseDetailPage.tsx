@@ -1,6 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FiArrowLeft, FiEdit2, FiTrash2, FiBookOpen, FiClock, FiUser, FiFileText, FiVideo, FiDownload } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiTrash2, FiBookOpen, FiClock, FiFileText, FiVideo  } from 'react-icons/fi';
+import { getCourseById, deleteCourse, togglePublishCourse } from '../../services/course.service';
+import Notification from '../../components/Notification';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 export interface CourseResource {
   id: string;
@@ -21,10 +24,23 @@ export interface LessonContent {
 }
 
 export interface CourseLesson {
-  id: string;
+  _id: string;
   title: string;
-  duration?: string;
+  duration: number;
+  order: number;
   content?: LessonContent[];
+}
+
+export interface CourseModule {
+  _id: string;
+  course: string;
+  title: string;
+  description: string;
+  order: number;
+  totalLessons: number;
+  totalDuration: number;
+  isActive: boolean;
+  lessons: CourseLesson[];
 }
 
 export interface CourseSection {
@@ -37,153 +53,172 @@ export interface CourseInstructor {
   name: string;
   title: string;
   initials: string;
+  avatar?: string;
 }
 
 export interface Course {
   id: string;
   title: string;
   description: string;
+  thumbnail?: string;
   duration?: string;
+  totalDuration?: number;
   level?: 'Cơ bản' | 'Trung cấp' | 'Nâng cao';
   objectives?: string[];
   sections?: CourseSection[];
+  modules?: CourseModule[];
   resources?: CourseResource[];
   instructor?: CourseInstructor;
+  category?: string;
+  tags?: string[];
+  totalLessons?: number;
+  totalModules?: number;
+  enrollmentCount?: number;
+  isPublished?: boolean;
+  isActive?: boolean;
   createdAt: string;
 }
 
 const AdminCourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    message: string;
+  }>({ show: false, type: 'info', message: '' });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
-  // Mock course data - in real app, this would come from API
-  const course: Course = useMemo(() => ({
-    id: courseId || '1',
-    title: 'Kỹ năng chăm sóc người cao tuổi',
-    description: 'Các nguyên tắc chăm sóc cơ bản và nâng cao cho người cao tuổi, bao gồm dinh dưỡng, vận động và giao tiếp. Khóa học này cung cấp kiến thức toàn diện về cách chăm sóc người cao tuổi một cách an toàn và hiệu quả.',
-    duration: '4 giờ',
-    level: 'Cơ bản',
-    objectives: [
-      'Nắm vững nguyên tắc an toàn khi hỗ trợ sinh hoạt hằng ngày',
-      'Thực hành giao tiếp trấn an và tôn trọng người cao tuổi',
-      'Nhận biết sớm dấu hiệu rủi ro và cách xử lý ban đầu',
-      'Hiểu biết về dinh dưỡng và chế độ ăn uống phù hợp',
-      'Kỹ năng hỗ trợ vận động và phòng ngừa té ngã'
-    ],
-    sections: [
-      {
-        id: 'sec-1',
-        title: 'Tổng quan & an toàn',
-        lessons: [
-          {
-            id: 'l-1',
-            title: 'Giới thiệu vai trò caregiver',
-            duration: '10m',
-            content: [
-              {
-                id: 'c-1',
-                type: 'text',
-                title: 'Định nghĩa caregiver',
-                content: '<p>Caregiver là người chăm sóc, hỗ trợ người cao tuổi trong các hoạt động sinh hoạt hàng ngày. Vai trò này đòi hỏi sự kiên nhẫn, tình yêu thương và kiến thức chuyên môn.</p>'
-              },
-              {
-                id: 'c-2',
-                type: 'video',
-                title: 'Video giới thiệu',
-                url: 'https://example.com/video1.mp4',
-                size: '5:30'
-              }
-            ]
-          },
-          {
-            id: 'l-2',
-            title: 'Nguyên tắc an toàn tại nhà',
-            duration: '18m',
-            content: [
-              {
-                id: 'c-3',
-                type: 'text',
-                title: 'Các nguyên tắc cơ bản',
-                content: '<p>Luôn đảm bảo môi trường sống an toàn, loại bỏ các vật cản, đảm bảo ánh sáng đầy đủ và không gian rộng rãi để di chuyển.</p>'
-              },
-              {
-                id: 'c-4',
-                type: 'file',
-                title: 'Checklist an toàn',
-                url: 'https://example.com/checklist.pdf',
-                size: '2.1MB'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'sec-2',
-        title: 'Giao tiếp & đồng hành',
-        lessons: [
-          {
-            id: 'l-3',
-            title: 'Kỹ thuật giao tiếp trấn an',
-            duration: '22m',
-            content: [
-              {
-                id: 'c-5',
-                type: 'text',
-                title: 'Nguyên tắc giao tiếp',
-                content: '<p>Lắng nghe tích cực, sử dụng ngôn ngữ cơ thể phù hợp, tránh áp đặt và luôn thể hiện sự tôn trọng.</p>'
-              },
-              {
-                id: 'c-6',
-                type: 'video',
-                title: 'Thực hành giao tiếp',
-                url: 'https://example.com/communication.mp4',
-                size: '8:45'
-              }
-            ]
-          },
-          {
-            id: 'l-4',
-            title: 'Xử lý tình huống căng thẳng',
-            duration: '15m',
-            content: [
-              {
-                id: 'c-7',
-                type: 'text',
-                title: 'Nhận biết dấu hiệu căng thẳng',
-                content: '<p>Quan sát thay đổi hành vi, cảm xúc, phản ứng của người cao tuổi để kịp thời can thiệp.</p>'
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    resources: [
-      { id: 'r-1', type: 'pdf', title: 'Checklist an toàn trong nhà', size: '1.2MB' },
-      { id: 'r-2', type: 'video', title: 'Kỹ thuật di chuyển an toàn', size: '8:24' },
-      { id: 'r-3', type: 'doc', title: 'Hướng dẫn dinh dưỡng', size: '3.1MB' }
-    ],
-    instructor: { 
-      name: 'BS. Nguyễn Minh Anh', 
-      title: 'Chuyên gia Lão khoa', 
-      initials: 'MA' 
-    },
-    createdAt: new Date().toISOString()
-  }), [courseId]);
-
-  const handleDelete = () => {
-    if (window.confirm('Bạn có chắc muốn xóa khóa học này?')) {
-      // In real app, call API to delete course
-      navigate('/admin/training');
-    }
+  const showNotification = (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+    setNotification({ show: true, type, message });
   };
 
-  const getContentIcon = (type: string) => {
-    switch (type) {
-      case 'text': return <FiFileText className="w-4 h-4" />;
-      case 'video': return <FiVideo className="w-4 h-4" />;
-      case 'file': return <FiDownload className="w-4 h-4" />;
-      default: return <FiFileText className="w-4 h-4" />;
-    }
+  // Fetch course details from API
+  useEffect(() => {
+    const fetchCourseDetail = async () => {
+      if (!courseId) {
+        navigate('/admin/training');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        console.log('🔍 Fetching course details for:', courseId);
+        
+        const result = await getCourseById(courseId);
+        
+        console.log('📚 Course detail result:', result);
+
+        if (result.success && result.data) {
+          const apiCourse = result.data;
+          
+          // Format duration helper
+          const formatDuration = (minutes: number) => {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (hours > 0 && mins > 0) return `${hours} giờ ${mins} phút`;
+            if (hours > 0) return `${hours} giờ`;
+            return `${mins} phút`;
+          };
+          
+          setCourse({
+            id: apiCourse._id,
+            title: apiCourse.title,
+            description: apiCourse.description,
+            thumbnail: apiCourse.thumbnail,
+            duration: formatDuration(apiCourse.duration),
+            totalDuration: apiCourse.duration,
+            level: apiCourse.level as 'Cơ bản' | 'Trung cấp' | 'Nâng cao',
+            category: apiCourse.category,
+            tags: apiCourse.tags,
+            totalLessons: apiCourse.totalLessons,
+            totalModules: apiCourse.totalModules,
+            enrollmentCount: apiCourse.enrollmentCount,
+            isPublished: apiCourse.isPublished,
+            isActive: apiCourse.isActive,
+            modules: (apiCourse as any).modules || [],
+            instructor: {
+              name: apiCourse.instructor.name,
+              title: apiCourse.instructor.title,
+              avatar: apiCourse.instructor.avatar,
+              initials: apiCourse.instructor.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+            },
+            createdAt: apiCourse.createdAt
+          });
+        } else {
+          showNotification('error', 'Không tìm thấy khóa học');
+          navigate('/admin/training');
+        }
+      } catch (error: any) {
+        console.error('❌ Error fetching course details:', error);
+        showNotification('error', 'Không thể tải thông tin khóa học');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourseDetail();
+  }, [courseId, navigate]);
+
+  const handleDelete = async () => {
+    if (!course) return;
+    
+    setConfirmDialog({
+      show: true,
+      title: 'Xóa khóa học',
+      message: 'Bạn có chắc muốn xóa khóa học này? Hành động này không thể hoàn tác.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await deleteCourse(course.id);
+          showNotification('success', 'Xóa khóa học thành công');
+          setTimeout(() => navigate('/admin/training'), 1500);
+        } catch (error: any) {
+          console.error('❌ Error deleting course:', error);
+          showNotification('error', 'Không thể xóa khóa học');
+        } finally {
+          setLoading(false);
+          setConfirmDialog(null);
+        }
+      }
+    });
+  };
+
+  const handleTogglePublish = async () => {
+    if (!course) return;
+    
+    const action = course.isPublished ? 'gỡ xuất bản' : 'xuất bản';
+    setConfirmDialog({
+      show: true,
+      title: course.isPublished ? 'Gỡ xuất bản khóa học' : 'Xuất bản khóa học',
+      message: `Bạn có chắc muốn ${action} khóa học này?`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          const result = await togglePublishCourse(course.id);
+          
+          if (result.success) {
+            showNotification('success', result.message);
+            setCourse(prev => prev ? { ...prev, isPublished: result.data.isPublished } : null);
+          }
+        } catch (error: any) {
+          console.error('❌ Error toggling publish status:', error);
+          showNotification('error', `Không thể ${action} khóa học`);
+        } finally {
+          setConfirmDialog(null);
+        }
+      }
+    });
   };
 
   const getResourceIcon = (type: string) => {
@@ -195,6 +230,27 @@ const AdminCourseDetailPage: React.FC = () => {
       default: return <FiFileText className="w-4 h-4" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin khóa học...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Không tìm thấy khóa học</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,35 +270,19 @@ const AdminCourseDetailPage: React.FC = () => {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h1>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
-                {course.duration && (
-                  <div className="flex items-center">
-                    <FiClock className="mr-2" />
-                    <span>{course.duration}</span>
-                  </div>
-                )}
-                {course.level && (
-                  <div className="flex items-center">
-                    <span className="mr-2">🎯</span>
-                    <span>{course.level}</span>
-                  </div>
-                )}
-                {course.sections && course.sections.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="mr-2">📚</span>
-                    <span>{course.sections.length} module</span>
-                  </div>
-                )}
-                {course.resources && course.resources.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="mr-2">📁</span>
-                    <span>{course.resources.length} tài liệu</span>
-                  </div>
-                )}
-              </div>
             </div>
             
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleTogglePublish}
+                className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  course.isPublished 
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {course.isPublished ? 'Gỡ xuất bản' : 'Xuất bản'}
+              </button>
               <Link
                 to={`/admin/training/${course.id}/edit`}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -286,50 +326,46 @@ const AdminCourseDetailPage: React.FC = () => {
             )}
 
             {/* Course Content */}
-            {course.sections && course.sections.length > 0 && (
+            {course.modules && course.modules.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Nội dung khóa học</h2>
                 <div className="space-y-6">
-                  {course.sections.map((section) => (
-                    <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {course.modules.map((module) => (
+                    <div key={module._id} className="border border-gray-200 rounded-lg overflow-hidden">
                       <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-900">{section.title}</h3>
-                          <span className="text-sm text-gray-600">{section.lessons.length} bài</span>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{module.title}</h3>
+                            {module.description && (
+                              <p className="text-sm text-gray-600 mt-1">{module.description}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm text-gray-600">{module.totalLessons} bài</span>
+                            <div className="text-xs text-gray-500">
+                              {Math.floor(module.totalDuration / 60)}:{String(module.totalDuration % 60).padStart(2, '0')}
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
                       <div className="divide-y divide-gray-200">
-                        {section.lessons.map((lesson) => (
-                          <div key={lesson.id} className="p-4">
-                            <div className="flex items-start justify-between mb-3">
+                        {module.lessons.map((lesson) => (
+                          <Link
+                            key={lesson._id}
+                            to={`/admin/training/${course.id}/lesson/${lesson._id}`}
+                            className="block p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h4 className="font-medium text-gray-900 mb-1">{lesson.title}</h4>
-                                {lesson.duration && (
-                                  <div className="flex items-center text-sm text-gray-600">
-                                    <FiClock className="mr-1" />
-                                    <span>{lesson.duration}</span>
-                                  </div>
-                                )}
+                                <h4 className="font-medium text-gray-900 mb-1 hover:text-blue-600">{lesson.title}</h4>
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <FiClock className="mr-1" />
+                                  <span>{Math.floor(lesson.duration / 60)} phút {lesson.duration % 60 > 0 ? `${lesson.duration % 60} giây` : ''}</span>
+                                </div>
                               </div>
                             </div>
-                            
-                            {/* Lesson Content */}
-                            {lesson.content && lesson.content.length > 0 && (
-                              <div className="ml-4 space-y-2">
-                                <div className="text-sm font-medium text-gray-700 mb-2">Nội dung:</div>
-                                {lesson.content.map((content) => (
-                                  <div key={content.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                                    {getContentIcon(content.type)}
-                                    <span>{content.title}</span>
-                                    {content.size && (
-                                      <span className="text-xs text-gray-500">({content.size})</span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -380,11 +416,19 @@ const AdminCourseDetailPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Số module</span>
-                  <span className="font-medium">{course.sections?.length || 0}</span>
+                  <span className="font-medium">{course.modules?.length || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Tài liệu</span>
-                  <span className="font-medium">{course.resources?.length || 0}</span>
+                  <span className="text-gray-600">Số bài học</span>
+                  <span className="font-medium">{course.totalLessons || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Trạng thái</span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    course.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {course.isActive ? 'Đang hoạt động' : 'Không hoạt động'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -394,7 +438,20 @@ const AdminCourseDetailPage: React.FC = () => {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Giảng viên</h3>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                  {course.instructor.avatar ? (
+                    <img
+                      src={course.instructor.avatar}
+                      alt={course.instructor.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold" style={{ display: course.instructor.avatar ? 'none' : 'flex' }}>
                     {course.instructor.initials}
                   </div>
                   <div>
@@ -402,35 +459,33 @@ const AdminCourseDetailPage: React.FC = () => {
                     <div className="text-sm text-gray-600">{course.instructor.title}</div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-700">
-                  Chuyên gia với nhiều năm kinh nghiệm trong lĩnh vực lão khoa và chăm sóc người cao tuổi.
-                </p>
               </div>
             )}
-
-            {/* Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Hành động</h3>
-              <div className="space-y-3">
-                <Link
-                  to={`/admin/training/${course.id}/files`}
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <FiBookOpen className="mr-2" />
-                  Quản lý tài liệu
-                </Link>
-                <Link
-                  to={`/admin/training/${course.id}/edit`}
-                  className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <FiEdit2 className="mr-2" />
-                  Chỉnh sửa khóa học
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </div>
+      
+      {/* Notification */}
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog?.show && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          confirmText="OK"
+          cancelText="Hủy"
+        />
+      )}
     </div>
   );
 };

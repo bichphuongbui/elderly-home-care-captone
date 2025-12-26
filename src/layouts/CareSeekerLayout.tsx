@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiUser, FiCalendar, FiAlertTriangle, FiMenu, FiX, FiLogOut, FiUserCheck, FiMessageCircle, FiBookOpen } from 'react-icons/fi';
+import { FiHome, FiMenu, FiX, FiLogOut, FiUserCheck, FiMessageCircle, FiBookOpen } from 'react-icons/fi';
 import Footer from '../components/layout/Footer';
 
 interface CareSeekerLayoutProps {
