@@ -1,118 +1,55 @@
-import React from "react";
-
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  accent?: "blue" | "green" | "purple" | "amber";
-  icon?: React.ReactNode;
-  trend?: {
-    value: string;
-    direction: "up" | "down";
-  };
-};
-
-const statAccentMap: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  blue: "bg-blue-50 text-blue-700 ring-blue-200",
-  green: "bg-green-50 text-green-700 ring-green-200",
-  purple: "bg-purple-50 text-purple-700 ring-purple-200",
-  amber: "bg-amber-50 text-amber-700 ring-amber-200",
-};
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, accent = "blue", icon, trend }) => {
-  const accentClasses = statAccentMap[accent];
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-lg">
-      <div className="flex items-start justify-between">
-        <div className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-sm font-medium ring-1 ${accentClasses}`}>
-          <span className="inline-block h-2 w-2 rounded-full bg-current opacity-80" />
-          {label}
-        </div>
-        {icon && (
-          <div className="rounded-xl bg-gray-50 p-2 text-gray-600 ring-1 ring-inset ring-gray-100">
-            {icon}
-          </div>
-        )}
-      </div>
-      <div className="mt-4 flex items-baseline gap-3">
-        <div className="text-3xl font-semibold tracking-tight text-gray-900">{value}</div>
-        {trend && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
-              trend.direction === "up"
-                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                : "bg-rose-50 text-rose-700 ring-rose-200"
-            }`}
-          >
-            {trend.direction === "up" ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path fillRule="evenodd" d="M10 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 1 1 6.293 10.293L8.586 12.586V4a1 1 0 0 1 1-1Z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path fillRule="evenodd" d="M10 17a1 1 0 0 1-1-1V7.414L6.707 9.707A1 1 0 1 1 5.293 8.293l4-4a1 1 0 0 1 1.414 0l4 4a1 1 0 1 1-1.414 1.414L11 7.414V16a1 1 0 0 1-1 1Z" clipRule="evenodd" />
-              </svg>
-            )}
-            {trend.value}
-          </span>
-        )}
-      </div>
-      <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-gradient-to-br from-gray-50 to-white opacity-60 ring-1 ring-inset ring-gray-100 transition group-hover:scale-110" />
-    </div>
-  );
-};
-
-type Feedback = {
-  id: string;
-  name: string;
-  content: string;
-  date: string;
-};
-
-const mockFeedbacks: Feedback[] = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    content: "Dịch vụ rất tốt, nhân viên nhiệt tình và chu đáo.",
-    date: "2025-08-12",
-  },
-  {
-    id: "2",
-    name: "Trần Thị B",
-    content: "Ứng dụng dễ sử dụng, đặt lịch nhanh chóng.",
-    date: "2025-08-10",
-  },
-  {
-    id: "3",
-    name: "Phạm Minh C",
-    content: "Mong có thêm nhiều gói dịch vụ linh hoạt hơn.",
-    date: "2025-08-08",
-  },
-  {
-    id: "4",
-    name: "Lê Thu D",
-    content: "Tốc độ phản hồi nhanh, rất hài lòng.",
-    date: "2025-08-05",
-  },
-  {
-    id: "5",
-    name: "Đỗ Quang E",
-    content: "Giao diện đẹp, trải nghiệm mượt mà.",
-    date: "2025-08-02",
-  },
-];
-
-type Activity = {
-  id: string;
-  type: "user" | "caregiver" | "booking" | "system";
-  description: string;
-  time: string;
-};
-
-const mockActivities: Activity[] = [
-  { id: "a3", type: "caregiver", description: "Yêu cầu duyệt hồ sơ caregiver: Vũ Thu Hà", time: "35 phút trước" },
-];
+import React, { useEffect, useState } from "react";
+import { getUsersByRole, UsersByRoleData, getBookingsStatistics, BookingStatistic } from "../../services/admin.service";
 
 const AdminDashboardPage: React.FC = () => {
+  const [usersByRole, setUsersByRole] = useState<UsersByRoleData[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [bookingsData, setBookingsData] = useState<BookingStatistic[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setBookingsLoading(true);
+        
+        const [usersResponse, bookingsResponse] = await Promise.all([
+          getUsersByRole(),
+          getBookingsStatistics()
+        ]);
+        
+        if (usersResponse.success) {
+          setUsersByRole(usersResponse.data.users);
+          setTotalUsers(usersResponse.data.total);
+        }
+        
+        if (bookingsResponse.success) {
+          setBookingsData(bookingsResponse.data.bookings);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+        setBookingsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const roleColors: Record<string, string> = {
+    careseeker: '#3b82f6',
+    caregiver: '#f59e0b',
+    admin: '#a855f7',
+  };
+
+  const roleBgColors: Record<string, string> = {
+    careseeker: 'bg-blue-500',
+    caregiver: 'bg-amber-500',
+    admin: 'bg-purple-500',
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
@@ -129,97 +66,291 @@ const AdminDashboardPage: React.FC = () => {
           <div className="pointer-events-none absolute -left-10 -bottom-10 -z-10 h-40 w-40 rounded-full bg-emerald-100 opacity-60 blur-2xl" />
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard 
-            label="Tổng số người dùng" 
-            value={1280} 
-            accent={"blue"}
-            
-            trend={{ value: "+12%", direction: "up" }}
-          />
-          <StatCard 
-            label="Người chăm sóc chờ duyệt" 
-            value={42} 
-            accent={"amber"}
-           
-            trend={{ value: "+3", direction: "up" }}
-          />
-          <StatCard 
-            label="Phản hồi/đánh giá" 
-            value={350} 
-            accent={"purple"}
-           
-            trend={{ value: "-2%", direction: "down" }}
-          />
-        </div>
-
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Bookings Statistics Chart */}
           <div className="lg:col-span-7 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Phản hồi gần đây</h2>
-              <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">Xem tất cả</button>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {mockFeedbacks.slice(0, 5).map((fb) => (
-                <li key={fb.id} className="flex items-start gap-4 py-4">
-                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-100">
-                    <span className="text-sm font-semibold">
-                      {fb.name
-                        .split(" ")
-                        .slice(-2)
-                        .map((n) => n[0])
-                        .join("")}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="truncate text-sm font-medium text-gray-900">{fb.name}</p>
-                      <span className="flex-none text-xs text-gray-500">{new Date(fb.date).toLocaleDateString("vi-VN")}</span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-600">{fb.content}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">Thống kê đặt lịch (30 ngày)</h2>
+            
+            {bookingsLoading ? (
+              <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+              </div>
+            ) : bookingsData.length === 0 ? (
+              <div className="flex h-64 items-center justify-center text-gray-400">
+                <p>Chưa có dữ liệu</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Pie Chart */}
+                <div className="relative mx-auto h-80 w-80">
+                  <svg viewBox="0 0 200 200" className="h-full w-full">
+                    {(() => {
+                      const totals = bookingsData.reduce((acc, b) => ({
+                        pending: acc.pending + b.pending,
+                        confirmed: acc.confirmed + b.confirmed,
+                        inProgress: acc.inProgress + b['in-progress'],
+                        completed: acc.completed + b.completed,
+                        cancelled: acc.cancelled + b.cancelled,
+                      }), { pending: 0, confirmed: 0, inProgress: 0, completed: 0, cancelled: 0 });
+                      
+                      const total = totals.pending + totals.confirmed + totals.inProgress + totals.completed + totals.cancelled;
+                      
+                      if (total === 0) {
+                        return (
+                          <text x="100" y="100" textAnchor="middle" fill="#9ca3af" fontSize="14">
+                            Chưa có dữ liệu
+                          </text>
+                        );
+                      }
+                      
+                      const slices = [
+                        { label: 'Chờ xác nhận', value: totals.pending, color: '#eab308' },
+                        { label: 'Đã xác nhận', value: totals.confirmed, color: '#3b82f6' },
+                        { label: 'Đang thực hiện', value: totals.inProgress, color: '#a855f7' },
+                        { label: 'Hoàn thành', value: totals.completed, color: '#22c55e' },
+                        { label: 'Đã hủy', value: totals.cancelled, color: '#ef4444' },
+                      ].filter(s => s.value > 0);
+                      
+                      // If only one slice with 100%, draw a full circle
+                      if (slices.length === 1) {
+                        return (
+                          <>
+                            <circle
+                              cx="100"
+                              cy="100"
+                              r="80"
+                              fill={slices[0].color}
+                              className="transition-opacity hover:opacity-80 cursor-pointer"
+                            />
+                            <text
+                              x="100"
+                              y="100"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="white"
+                              fontSize="20"
+                              fontWeight="700"
+                            >
+                              100%
+                            </text>
+                            <text
+                              x="100"
+                              y="120"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="white"
+                              fontSize="12"
+                            >
+                              {slices[0].label}
+                            </text>
+                          </>
+                        );
+                      }
+                      
+                      let currentAngle = -90; // Start from top
+                      
+                      return (
+                        <>
+                          {slices.map((slice, index) => {
+                            const percentage = (slice.value / total) * 100;
+                            const angle = (percentage / 100) * 360;
+                            
+                            const startAngle = currentAngle;
+                            const endAngle = currentAngle + angle;
+                            
+                            // Convert to radians
+                            const startRad = (startAngle * Math.PI) / 180;
+                            const endRad = (endAngle * Math.PI) / 180;
+                            
+                            const radius = 80;
+                            const centerX = 100;
+                            const centerY = 100;
+                            
+                            // Calculate arc points
+                            const x1 = centerX + radius * Math.cos(startRad);
+                            const y1 = centerY + radius * Math.sin(startRad);
+                            const x2 = centerX + radius * Math.cos(endRad);
+                            const y2 = centerY + radius * Math.sin(endRad);
+                            
+                            const largeArc = angle > 180 ? 1 : 0;
+                            
+                            const pathData = [
+                              `M ${centerX} ${centerY}`,
+                              `L ${x1} ${y1}`,
+                              `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+                              'Z'
+                            ].join(' ');
+                            
+                            // Calculate label position
+                            const labelAngle = startAngle + angle / 2;
+                            const labelRad = (labelAngle * Math.PI) / 180;
+                            const labelRadius = radius * 0.65;
+                            const labelX = centerX + labelRadius * Math.cos(labelRad);
+                            const labelY = centerY + labelRadius * Math.sin(labelRad);
+                            
+                            currentAngle = endAngle;
+                            
+                            return (
+                              <g key={index}>
+                                <path
+                                  d={pathData}
+                                  fill={slice.color}
+                                  className="transition-opacity hover:opacity-80 cursor-pointer"
+                                />
+                                {/* Percentage label */}
+                                {percentage > 5 && (
+                                  <text
+                                    x={labelX}
+                                    y={labelY}
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                    fill="white"
+                                    fontSize="14"
+                                    fontWeight="700"
+                                  >
+                                    {percentage.toFixed(0)}%
+                                  </text>
+                                )}
+                              </g>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+
+                {/* Statistics Summary */}
+                <div className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-5">
+                  {(() => {
+                    const totals = bookingsData.reduce((acc, b) => ({
+                      pending: acc.pending + b.pending,
+                      confirmed: acc.confirmed + b.confirmed,
+                      inProgress: acc.inProgress + b['in-progress'],
+                      completed: acc.completed + b.completed,
+                      cancelled: acc.cancelled + b.cancelled,
+                    }), { pending: 0, confirmed: 0, inProgress: 0, completed: 0, cancelled: 0 });
+                    
+                    return (
+                      <>
+                        <div className="rounded-lg bg-yellow-50 p-3 text-center">
+                          <div className="text-xs text-yellow-600">Chờ xác nhận</div>
+                          <div className="text-xl font-semibold text-yellow-700">{totals.pending}</div>
+                        </div>
+                        <div className="rounded-lg bg-blue-50 p-3 text-center">
+                          <div className="text-xs text-blue-600">Đã xác nhận</div>
+                          <div className="text-xl font-semibold text-blue-700">{totals.confirmed}</div>
+                        </div>
+                        <div className="rounded-lg bg-purple-50 p-3 text-center">
+                          <div className="text-xs text-purple-600">Đang thực hiện</div>
+                          <div className="text-xl font-semibold text-purple-700">{totals.inProgress}</div>
+                        </div>
+                        <div className="rounded-lg bg-green-50 p-3 text-center">
+                          <div className="text-xs text-green-600">Hoàn thành</div>
+                          <div className="text-xl font-semibold text-green-700">{totals.completed}</div>
+                        </div>
+                        <div className="rounded-lg bg-red-50 p-3 text-center">
+                          <div className="text-xs text-red-600">Đã hủy</div>
+                          <div className="text-xl font-semibold text-red-700">{totals.cancelled}</div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* User Distribution Chart */}
           <div className="lg:col-span-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Hoạt động hệ thống</h2>
-              <button className="text-sm font-medium text-gray-600 hover:text-gray-700">Làm mới</button>
-            </div>
-            <ul className="space-y-3">
-              {mockActivities.map((act) => (
-                <li key={act.id} className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3">
-                  <div className={`mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg ring-1 ring-inset ${
-                    act.type === "user"
-                      ? "bg-indigo-50 text-indigo-600 ring-indigo-100"
-                      : act.type === "caregiver"
-                      ? "bg-amber-50 text-amber-600 ring-amber-100"
-                      : act.type === "booking"
-                      ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
-                      : "bg-gray-50 text-gray-600 ring-gray-100"
-                  }`}>
-                    {act.type === "user" && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.118a7.5 7.5 0 0 1 15 0 .882.882 0 0 1-.879.882H5.379A.882.882 0 0 1 4.5 20.118Z"/></svg>
-                    )}
-                    {act.type === "caregiver" && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M6.75 7.5A3.75 3.75 0 1 0 6.75 0a3.75 3.75 0 0 0 0 7.5Zm10.5 0A3.75 3.75 0 1 0 17.25 0a3.75 3.75 0 0 0 0 7.5Z"/></svg>
-                    )}
-                    {act.type === "booking" && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M3 5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25V6H3v-.75ZM3 7.5h18v11.25A2.25 2.25 0 0 1 18.75 21H5.25A2.25 2.25 0 0 1 3 18.75V7.5Z"/></svg>
-                    )}
-                    {act.type === "system" && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 2.25A9.75 9.75 0 1 0 21.75 12 9.761 9.761 0 0 0 12 2.25Zm.75 5.25a.75.75 0 0 0-1.5 0v4.5c0 .199.079.39.22.53l3 3a.75.75 0 1 0 1.06-1.06l-2.78-2.78V7.5Z"/></svg>
-                    )}
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">Phân bố người dùng theo vai trò</h2>
+            
+            {loading ? (
+              <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Donut Chart */}
+                <div className="relative mx-auto h-64 w-64">
+                  <svg viewBox="0 0 200 200" className="h-full w-full">
+                    {usersByRole.map((user, index) => {
+                      const previousPercentages = usersByRole
+                        .slice(0, index)
+                        .reduce((sum, u) => sum + parseFloat(u.percentage), 0);
+                      const percentage = parseFloat(user.percentage);
+                      
+                      // Calculate angles
+                      const startAngle = (previousPercentages / 100) * 360 - 90; // -90 to start from top
+                      const endAngle = ((previousPercentages + percentage) / 100) * 360 - 90;
+                      
+                      // Convert to radians
+                      const startRad = (startAngle * Math.PI) / 180;
+                      const endRad = (endAngle * Math.PI) / 180;
+                      
+                      // Arc parameters
+                      const outerRadius = 85;
+                      const innerRadius = 55;
+                      const centerX = 100;
+                      const centerY = 100;
+                      
+                      // Calculate points for outer arc
+                      const x1 = centerX + outerRadius * Math.cos(startRad);
+                      const y1 = centerY + outerRadius * Math.sin(startRad);
+                      const x2 = centerX + outerRadius * Math.cos(endRad);
+                      const y2 = centerY + outerRadius * Math.sin(endRad);
+                      
+                      // Calculate points for inner arc
+                      const x3 = centerX + innerRadius * Math.cos(endRad);
+                      const y3 = centerY + innerRadius * Math.sin(endRad);
+                      const x4 = centerX + innerRadius * Math.cos(startRad);
+                      const y4 = centerY + innerRadius * Math.sin(startRad);
+                      
+                      // Large arc flag
+                      const largeArc = percentage > 50 ? 1 : 0;
+                      
+                      // Create path
+                      const pathData = [
+                        `M ${x1} ${y1}`,
+                        `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2}`,
+                        `L ${x3} ${y3}`,
+                        `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
+                        'Z'
+                      ].join(' ');
+
+                      return (
+                        <path
+                          key={user.role}
+                          d={pathData}
+                          fill={roleColors[user.role] || '#6b7280'}
+                          className="transition-opacity hover:opacity-80"
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="text-3xl font-bold text-gray-900">{totalUsers}</div>
+                    <div className="text-sm text-gray-500">Tổng số</div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-800">{act.description}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">{act.time}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                </div>
+
+                {/* Legend */}
+                <div className="space-y-2 pt-4">
+                  {usersByRole.map((user) => (
+                    <div key={user.role} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-3 w-3 rounded-full ${roleBgColors[user.role] || 'bg-gray-500'}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{user.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">{user.count}</span>
+                        <span className="text-xs text-gray-500">({user.percentage}%)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

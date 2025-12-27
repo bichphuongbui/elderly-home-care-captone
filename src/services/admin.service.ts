@@ -585,3 +585,66 @@ export async function updateCaregiverProfileStatus(
     throw error;
   }
 }
+
+// Dashboard
+export interface UsersByRoleData {
+  role: string;
+  label: string;
+  count: number;
+  percentage: string;
+}
+
+export interface UsersByRoleResponse {
+  success: boolean;
+  data: {
+    users: UsersByRoleData[];
+    total: number;
+  };
+}
+
+export async function getUsersByRole(): Promise<UsersByRoleResponse> {
+  try {
+    const res = await api.get('/api/dashboard/users/by-role');
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Get users by role error:', error);
+    throw error;
+  }
+}
+
+export interface BookingStatistic {
+  date: string;
+  pending: number;
+  confirmed: number;
+  'in-progress': number;
+  completed: number;
+  cancelled: number;
+  total: number;
+  totalRevenue: number;
+}
+
+export interface BookingsStatisticsResponse {
+  success: boolean;
+  data: {
+    period: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    bookings: BookingStatistic[];
+  };
+}
+
+export async function getBookingsStatistics(params?: {
+  period?: 'day' | 'week' | 'month';
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<BookingsStatisticsResponse> {
+  try {
+    const res = await api.get('/api/dashboard/bookings/statistics', { params });
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Get bookings statistics error:', error);
+    throw error;
+  }
+}
