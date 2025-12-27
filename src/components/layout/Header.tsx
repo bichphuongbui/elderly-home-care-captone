@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logoImage from '../../assets/logo.jpg';
 
 // Header component với navigation menu responsive
 const Header: React.FC = () => {
@@ -26,7 +27,7 @@ const Header: React.FC = () => {
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
               <img 
-                src="/src/assets/logo.jpg" 
+                src={logoImage} 
                 alt="AI Elderly Care" 
                 className="h-10 w-auto"
               />

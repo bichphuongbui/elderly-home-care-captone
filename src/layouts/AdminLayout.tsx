@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import logoImage from "../assets/logo.jpg";
 
 type AdminLayoutProps = {
   children: React.ReactNode;
@@ -131,9 +132,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
           <div className="flex items-center gap-2">
             <img 
-              src="/src/assets/logo.jpg" 
+              src={logoImage} 
               alt="Admin Logo" 
-              className="h-8 w-8 rounded shadow-sm object-cover"
+              className="h-8 w-8 rounded object-cover shadow-sm"
             />
             {isOpen && <span className="text-sm font-bold text-gray-800">Admin</span>}
           </div>
