@@ -419,15 +419,24 @@ const UserManagementPage: React.FC = () => {
           return;
         }
         
+        // Debug: Log raw user data
+        console.log('🔍 Raw users data:', result.users);
+        if (result.users.length > 0) {
+          console.log('🔍 First user sample:', result.users[0]);
+        }
+        
         // Map AdminUser sang UserWithStatus
-        const usersWithStatus: UserWithStatus[] = result.users.map((user: AdminUser) => ({
-          id: user._id || '',
-          fullName: user.name || 'N/A',
-          email: user.email || 'N/A',
-          role: user.role || 'N/A',
-          status: user.isActive ? 'active' : 'blocked',
-          createdAt: user.createdAt || '',
-        }));
+        const usersWithStatus: UserWithStatus[] = result.users.map((user: AdminUser) => {
+          console.log('Mapping user:', user);
+          return {
+            id: user._id || '',
+            fullName: user.name || user.email?.split('@')[0] || 'Chưa cập nhật',
+            email: user.email || 'N/A',
+            role: user.role || 'N/A',
+            status: user.isActive ? 'active' : 'blocked',
+            createdAt: user.createdAt || '',
+          };
+        });
         
         console.log('✅ Mapped users:', usersWithStatus);
         console.log('🔍 API Result:', result);
