@@ -124,20 +124,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside
-        className={`sticky top-0 z-30 hidden h-screen flex-shrink-0 shadow md:block ${
+        className={`sticky top-0 z-30 hidden h-screen flex-shrink-0 bg-white shadow md:block ${
           isOpen ? "w-64" : "w-20"
         } transition-[width] duration-200`}
-        style={{ backgroundColor: '#70C1F1' }}
       >
-        <div className="flex items-center justify-between border-b px-4 py-4" style={{ borderColor: 'rgba(15,23,42,0.15)' }}>
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-900 text-white font-bold shadow-sm">A</div>
-            {isOpen && <span className="text-sm font-bold text-slate-900">Admin</span>}
+            <img 
+              src="/src/assets/logo.jpg" 
+              alt="Admin Logo" 
+              className="h-8 w-8 rounded shadow-sm object-cover"
+            />
+            {isOpen && <span className="text-sm font-bold text-gray-800">Admin</span>}
           </div>
           <button
             aria-label="Toggle sidebar"
             onClick={() => setIsOpen((v) => !v)}
-            className="rounded p-2 text-slate-900 hover:bg-slate-900 hover:bg-opacity-10"
+            className="rounded p-2 text-gray-600 hover:bg-gray-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
               <path d="M3.75 6.75A.75.75 0 0 1 4.5 6h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Zm0 5.25a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Zm0 5.25a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Z" />
@@ -151,21 +154,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               to={item.path}
               className={`group flex items-center gap-3 rounded px-3 py-2 text-sm font-semibold transition ${
                 isActive(item.path) 
-                  ? "bg-slate-900 text-white shadow-sm" 
-                  : "text-slate-900 hover:bg-slate-900 hover:bg-opacity-10"
+                  ? "text-white shadow-sm" 
+                  : "text-gray-700 hover:bg-blue-50"
               }`}
+              style={isActive(item.path) ? { backgroundColor: 'rgb(124, 188, 255)' } : undefined}
               title={!isOpen ? item.label : undefined}
             >
-              <span className={isActive(item.path) ? "text-white" : "text-slate-900"}>{item.icon}</span>
+              <span className={isActive(item.path) ? "text-white" : "text-gray-700"}>{item.icon}</span>
               {isOpen && <span className="truncate">{item.label}</span>}
             </Link>
           ))}
           <button
             onClick={handleLogout}
-            className="mt-2 flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-900 hover:bg-opacity-10"
+            className="mt-2 flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm font-semibold text-gray-700 transition hover:bg-blue-50"
             title={!isOpen ? "Đăng xuất" : undefined}
           >
-            <span className="text-slate-900">
+            <span className="text-gray-700">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                 <path d="M15.75 3.75A3.75 3.75 0 0 1 19.5 7.5v9a3.75 3.75 0 0 1-3.75 3.75h-3a.75.75 0 0 1 0-1.5h3A2.25 2.25 0 0 0 18 16.5v-9A2.25 2.25 0 0 0 15.75 5.25h-3a.75.75 0 0 1 0-1.5h3Zm-6.53 4.22a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1 0 1.06l-3 3a.75.75 0 1 1-1.06-1.06l1.72-1.72H3.75a.75.75 0 0 1 0-1.5h6.19l-1.72-1.72a.75.75 0 0 1 0-1.06Z" />
               </svg>

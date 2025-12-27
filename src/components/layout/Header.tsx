@@ -25,9 +25,11 @@ const Header: React.FC = () => {
           {/* Logo góc trái */}
           <div className="flex-shrink-0">
             <a href="/" className="flex items-center">
-              <span className="text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors">
-                AI Elderly Care
-              </span>
+              <img 
+                src="/src/assets/logo.jpg" 
+                alt="AI Elderly Care" 
+                className="h-10 w-auto"
+              />
             </a>
           </div>
 
